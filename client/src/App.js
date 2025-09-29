@@ -8,6 +8,9 @@ import ProductGrid from './components/ProductGrid';
 import OrderPanel from './components/OrderPanel';
 import Dashboard from './components/Dashboard';
 import ItemManagement from './components/ItemManagement';
+import SalesManagement from './components/SalesManagement';
+import TableManagement from './components/TableManagement';
+import Settings from './components/Settings';
 import axios from 'axios';
 
 function App() {
@@ -21,27 +24,97 @@ function App() {
   const [currentView, setCurrentView] = useState('pos'); // Navigation state
 
   useEffect(() => {
-    fetchCategories();
-    fetchProducts();
+    // Initialize data fetching with proper error handling
+    const initializeData = async () => {
+      try {
+        await fetchCategories();
+        await fetchProducts();
+      } catch (error) {
+        console.error('Error during initialization:', error);
+      }
+    };
+    
+    initializeData();
   }, []);
 
-  const fetchCategories = async () => {
+  const fetchCategories = async (retryCount = 0) => {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+    
     try {
-      const response = await axios.get('/api/categories');
-      setCategories(['Show All', ...response.data.map(cat => cat.name)]);
+      const response = await axios.get('/api/categories', {
+        timeout: 10000 // 10 seconds timeout
+      });
+      
+      if (response.data && Array.isArray(response.data)) {
+        setCategories(['Show All', ...response.data.map(cat => cat.name)]);
+      } else {
+        throw new Error('Invalid categories response format');
+      }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error(`Error fetching categories (attempt ${retryCount + 1}):`, error);
+      
+      // Retry logic for network errors or timeouts
+      if (retryCount < maxRetries && 
+          (error.code === 'ECONNABORTED' || 
+           error.code === 'NETWORK_ERROR' || 
+           error.response?.status >= 500)) {
+        
+        console.log(`Retrying categories in ${retryDelay}ms... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          fetchCategories(retryCount + 1);
+        }, retryDelay * (retryCount + 1)); // Exponential backoff
+        return;
+      }
+      
+      // If all retries failed, set default categories
+      if (categories.length <= 1) { // Only 'Show All' or empty
+        setCategories(['Show All']);
+        console.error('Failed to fetch categories after all retries, using defaults');
+      }
     }
   };
 
-  const fetchProducts = async (category = null) => {
+  const fetchProducts = async (category = null, retryCount = 0) => {
+    const maxRetries = 3;
+    const retryDelay = 1000; // 1 second
+    
     try {
       setLoading(true);
       const params = category && category !== 'Show All' ? { category } : {};
-      const response = await axios.get('/api/products', { params });
-      setProducts(response.data);
+      
+      // Add timeout to prevent hanging requests
+      const response = await axios.get('/api/products', { 
+        params,
+        timeout: 10000 // 10 seconds timeout
+      });
+      
+      if (response.data && Array.isArray(response.data)) {
+        setProducts(response.data);
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error(`Error fetching products (attempt ${retryCount + 1}):`, error);
+      
+      // Retry logic for network errors or timeouts
+      if (retryCount < maxRetries && 
+          (error.code === 'ECONNABORTED' || 
+           error.code === 'NETWORK_ERROR' || 
+           error.response?.status >= 500)) {
+        
+        console.log(`Retrying in ${retryDelay}ms... (${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          fetchProducts(category, retryCount + 1);
+        }, retryDelay * (retryCount + 1)); // Exponential backoff
+        return;
+      }
+      
+      // If all retries failed or it's a client error, keep existing products if any
+      if (products.length === 0) {
+        // Only show error if we have no products to display
+        console.error('Failed to fetch products after all retries');
+      }
     } finally {
       setLoading(false);
     }
@@ -111,7 +184,26 @@ function App() {
     }
     
     if (currentView === 'item management') {
-      return <ItemManagement initialSection="overview" onNavigate={handleNavigation} />;
+      return <ItemManagement 
+        initialSection="overview" 
+        onNavigate={handleNavigation}
+        products={products}
+        setProducts={setProducts}
+        categories={categories.filter(cat => cat !== 'Show All')}
+        setCategories={(newCategories) => setCategories(['Show All', ...newCategories])}
+      />;
+    }
+    
+    if (currentView === 'sales management') {
+      return <SalesManagement />;
+    }
+    
+    if (currentView === 'table management') {
+      return <TableManagement />;
+    }
+    
+    if (currentView === 'settings') {
+      return <Settings />;
     }
     
     // Default POS view

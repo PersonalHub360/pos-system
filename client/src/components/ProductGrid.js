@@ -66,14 +66,21 @@ const ProductGrid = ({
       <div className="product-grid">
         {products.length === 0 ? (
           <div className="empty-state">
+            <div className="empty-icon">📦</div>
             <p>No products found</p>
+            <button 
+              className="retry-btn" 
+              onClick={() => window.location.reload()}
+            >
+              Refresh Products
+            </button>
           </div>
         ) : (
           products.map((product) => (
             <div key={product.id} className="product-card" onClick={() => onAddToCart(product)}>
               <div className="product-image">
                 <img 
-                  src={generateProductImage(product.name)} 
+                  src={product.image_url || generateProductImage(product.name)} 
                   alt={product.name}
                   onError={(e) => {
                     e.target.src = generateProductImage(product.name);

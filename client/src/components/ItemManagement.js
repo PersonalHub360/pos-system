@@ -1,41 +1,34 @@
 import React, { useState, useRef } from 'react';
 import './ItemManagement.css';
 
-const ItemManagement = ({ initialSection = 'overview', onNavigate }) => {
+const ItemManagement = ({ 
+  initialSection = 'overview', 
+  onNavigate, 
+  products = [], 
+  setProducts, 
+  categories = [], 
+  setCategories 
+}) => {
   const [activeSection, setActiveSection] = useState('overview');
-  const [items, setItems] = useState([
-    {
-      id: 1,
-      name: 'Espresso',
-      category: 'Beverages',
-      price: 2.50,
-      status: 'Active',
-      photo: '/api/placeholder/50/50'
-    },
-    {
-      id: 2,
-      name: 'Croissant',
-      category: 'Pastries',
-      price: 3.25,
-      status: 'Active',
-      photo: '/api/placeholder/50/50'
-    },
-    {
-      id: 3,
-      name: 'Caesar Salad',
-      category: 'Salads',
-      price: 8.99,
-      status: 'Inactive',
-      photo: '/api/placeholder/50/50'
-    }
-  ]);
+  
+  // Use products from parent App component instead of local items state
+  const items = products.map(product => ({
+    id: product.id,
+    name: product.name,
+    category: product.category_name || 'Uncategorized',
+    price: product.price,
+    status: 'Active', // Default status since API doesn't have status field
+    photo: product.image_url || '/api/placeholder/50/50'
+  }));
+
   const [newItem, setNewItem] = useState({
     name: '',
     category: '',
     price: '',
     photo: null
   });
-  const [categories, setCategories] = useState(['Beverages', 'Pastries', 'Salads', 'Main Dishes']);
+  
+  // Use categories from parent App component
   const [newCategory, setNewCategory] = useState('');
 
   const [dragActive, setDragActive] = useState(false);
@@ -93,20 +86,21 @@ const ItemManagement = ({ initialSection = 'overview', onNavigate }) => {
   const handleAddItem = (e) => {
     e.preventDefault();
     if (newItem.name && newItem.price) {
-      const item = {
-        id: items.length + 1,
+      const newProduct = {
+        id: Math.max(...products.map(p => p.id), 0) + 1,
         name: newItem.name,
-        category: newItem.category,
         price: parseFloat(newItem.price),
-        status: newItem.status,
-        photo: photoPreview || '/api/placeholder/60/60'
+        category_name: newItem.category,
+        image_url: photoPreview || '/api/placeholder/60/60'
       };
-      setItems([...items, item]);
+      
+      // Add to products state in App component
+      setProducts([...products, newProduct]);
+      
       setNewItem({
         name: '',
-        category: 'Drinks',
+        category: categories[0] || '',
         price: '',
-        status: 'Active',
         photo: null
       });
       setPhotoPreview(null);
@@ -119,15 +113,13 @@ const ItemManagement = ({ initialSection = 'overview', onNavigate }) => {
   };
 
   const handleDeleteItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
+    setProducts(products.filter(product => product.id !== id));
   };
 
   const handleToggleStatus = (id) => {
-    setItems(items.map(item => 
-      item.id === id 
-        ? { ...item, status: item.status === 'Active' ? 'Inactive' : 'Active' }
-        : item
-    ));
+    // Since the API doesn't support status, we'll just keep this as a placeholder
+    // In a real implementation, this would update the product status in the database
+    console.log('Toggle status for product:', id);
   };
 
   const handleAddCategory = () => {
@@ -195,7 +187,14 @@ const ItemManagement = ({ initialSection = 'overview', onNavigate }) => {
         {items.map(item => (
           <div key={item.id} className="table-row">
             <div className="table-cell">
-              <img src={item.photo} alt={item.name} className="item-photo" />
+              <img 
+                src={item.photo} 
+                alt={item.name} 
+                className="item-photo"
+                onError={(e) => {
+                  e.target.src = '/api/placeholder/50/50';
+                }}
+              />
             </div>
             <div className="table-cell">{item.name}</div>
             <div className="table-cell">{item.category}</div>

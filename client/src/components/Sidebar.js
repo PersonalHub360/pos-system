@@ -5,12 +5,16 @@ const Sidebar = ({ onNavigate }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   
   const menuItems = [
-    { icon: '📊', label: 'Dashboard', active: false },
-    { icon: '🏪', label: 'Pos', active: true },
-    { icon: '📦', label: 'Item Management', active: false },
-    { icon: '🍽️', label: 'Table', active: false },
-    { icon: '📈', label: 'Reports', active: false },
-    { icon: '⚙️', label: 'Setting', active: false }
+    { icon: '📊', label: 'Dashboard', active: false, color: '#3B82F6' },
+    { icon: '🏪', label: 'Pos', active: true, color: '#10B981' },
+    { icon: '📦', label: 'Item Management', active: false, color: '#F59E0B' },
+    { icon: '💰', label: 'Sales Management', active: false, color: '#EF4444' },
+    { icon: '🍽️', label: 'Table Management', active: false, color: '#8B5CF6' },
+    { icon: '📈', label: 'Reports', active: false, color: '#06B6D4' }
+  ];
+
+  const bottomMenuItems = [
+    { icon: '⚙️', label: 'Settings', active: false, color: '#6B7280' }
   ];
 
   const handleMenuClick = (item, index) => {
@@ -56,6 +60,7 @@ const Sidebar = ({ onNavigate }) => {
               className={`nav-item ${item.active ? 'active' : ''} ${item.hasSubmenu ? 'has-submenu' : ''}`}
               onClick={() => handleMenuClick(item, index)}
             >
+              <div className="nav-color-box" style={{ backgroundColor: item.color }}></div>
               <span className="nav-icon">{item.icon}</span>
               <span className="nav-label">{item.label}</span>
               {item.badge && <span className="nav-badge">{item.badge}</span>}
@@ -84,11 +89,44 @@ const Sidebar = ({ onNavigate }) => {
         ))}
       </nav>
 
+      <div className="sidebar-bottom">
+        {bottomMenuItems.map((item, index) => (
+          <div key={`bottom-${index}`}>
+            <div 
+               className={`nav-item ${item.active ? 'active' : ''} ${item.hasSubmenu ? 'has-submenu' : ''}`}
+               onClick={() => handleMenuClick(item, menuItems.length + index)}
+             >
+               <div className="nav-color-box" style={{ backgroundColor: item.color }}></div>
+               <span className="nav-icon">{item.icon}</span>
+               <span className="nav-label">{item.label}</span>
+               {item.badge && <span className="nav-badge">{item.badge}</span>}
+               {item.hasSubmenu && (
+                 <span className={`submenu-arrow ${expandedMenu === (menuItems.length + index) ? 'expanded' : ''}`}>
+                   ▼
+                 </span>
+               )}
+             </div>
+            
+            {item.hasSubmenu && expandedMenu === (menuItems.length + index) && (
+              <div className="submenu">
+                {item.submenu.map((subItem, subIndex) => (
+                  <div 
+                    key={subIndex}
+                    className="submenu-item"
+                    onClick={() => handleSubmenuClick(subItem)}
+                  >
+                    <span className="submenu-icon">{subItem.icon}</span>
+                    <span className="submenu-label">{subItem.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
       <div className="sidebar-footer">
-        <div className="nav-item">
-          <span className="nav-icon">🚪</span>
-          <span className="nav-label">Logout</span>
-        </div>
+        {/* Logout removed as requested */}
       </div>
     </div>
   );

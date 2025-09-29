@@ -252,37 +252,30 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       </div>
 
       <div className="order-actions">
-        <div className="action-buttons-top">
+        <div className="action-buttons-row">
           <button 
-            className="action-btn secondary"
+            className="action-btn draft-btn"
             onClick={handleDraft}
             disabled={cart.length === 0}
           >
-            📄 Draft
-          </button>
-        </div>
-        
-        <div className="action-buttons-bottom">
-          <button 
-            className="action-btn secondary"
-            onClick={handlePOSAndPrint}
-            disabled={isProcessing || cart.length === 0}
-          >
-            {isProcessing ? 'Processing...' : 'Print Receipt'}
+            📄 DRAFT
           </button>
           <button 
-            className="action-btn payment"
-            onClick={() => handlePlaceOrder(false)}
-            disabled={isProcessing || cart.length === 0}
-          >
-            {isProcessing ? 'Processing...' : 'Place Order'}
-          </button>
-          <button 
-            className="action-btn print"
+            className="action-btn bill-print-btn"
             onClick={() => handlePlaceOrder(true)}
             disabled={isProcessing || cart.length === 0}
           >
-            {isProcessing ? 'Processing...' : 'Bill & Print'}
+            {isProcessing ? 'Processing...' : 'BILL & PRINT'}
+          </button>
+        </div>
+        
+        <div className="action-buttons-row">
+          <button 
+            className="action-btn place-order-btn full-width"
+            onClick={() => handlePlaceOrder(false)}
+            disabled={isProcessing || cart.length === 0}
+          >
+            {isProcessing ? 'Processing...' : 'PLACE ORDER'}
           </button>
         </div>
       </div>

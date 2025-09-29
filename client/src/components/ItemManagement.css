@@ -147,11 +147,12 @@
 }
 
 .item-photo {
-  width: 50px;
-  height: 50px;
+  width: 90px;
+  height: 90px;
   border-radius: 8px;
-  object-fit: cover;
+  object-fit: contain;
   border: 2px solid #e2e8f0;
+  background: white;
 }
 
 .status-badge {
