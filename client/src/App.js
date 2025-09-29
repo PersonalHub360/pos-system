@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import './theme.css';
+import { ThemeProvider } from './contexts/ThemeContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
 import OrderPanel from './components/OrderPanel';
+import Dashboard from './components/Dashboard';
+import ItemManagement from './components/ItemManagement';
 import axios from 'axios';
 
 function App() {
@@ -13,6 +17,8 @@ function App() {
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [draftState, setDraftState] = useState(null); // For restoring draft state
+  const [currentView, setCurrentView] = useState('pos'); // Navigation state
 
   useEffect(() => {
     fetchCategories();
@@ -79,40 +85,80 @@ function App() {
     setCart([]);
   };
 
+  const handleRestoreDraft = (draft) => {
+    // Restore cart items
+    if (draft.cart && Array.isArray(draft.cart)) {
+      setCart(draft.cart);
+    }
+    
+    // Store draft state for OrderPanel to restore dining/table selections
+    setDraftState({
+      dining: draft.dining || '',
+      table: draft.table || '',
+      extraDiscount: draft.extraDiscount || 0,
+      couponDiscount: draft.couponDiscount || 0,
+      orderNotes: draft.orderNotes || {}
+    });
+  };
+
+  const handleNavigation = (view) => {
+    setCurrentView(view);
+  };
+
+  const renderMainContent = () => {
+    if (currentView === 'dashboard') {
+      return <Dashboard initialSection="overview" />;
+    }
+    
+    if (currentView === 'item management') {
+      return <ItemManagement initialSection="overview" onNavigate={handleNavigation} />;
+    }
+    
+    // Default POS view
+    return (
+      <div className="content-area">
+        <div className="products-section">
+          <ProductGrid
+            products={filteredProducts}
+            categories={categories}
+            selectedCategory={selectedCategory}
+            onCategoryChange={handleCategoryChange}
+            onAddToCart={addToCart}
+            loading={loading}
+          />
+        </div>
+        <div className="order-section">
+          <OrderPanel
+            cart={cart}
+            onUpdateItem={updateCartItem}
+            onRemoveItem={removeFromCart}
+            onClearCart={clearCart}
+            draftState={draftState}
+            onDraftStateUsed={() => setDraftState(null)}
+          />
+        </div>
+      </div>
+    );
+  };
+
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="app">
-      <Sidebar />
-      <div className="main-content">
-        <Header 
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-        />
-        <div className="content-area">
-          <div className="products-section">
-            <ProductGrid
-              products={filteredProducts}
-              categories={categories}
-              selectedCategory={selectedCategory}
-              onCategoryChange={handleCategoryChange}
-              onAddToCart={addToCart}
-              loading={loading}
-            />
-          </div>
-          <div className="order-section">
-            <OrderPanel
-              cart={cart}
-              onUpdateItem={updateCartItem}
-              onRemoveItem={removeFromCart}
-              onClearCart={clearCart}
-            />
-          </div>
+    <ThemeProvider>
+      <div className="app">
+        <Sidebar onNavigate={handleNavigation} />
+        <div className="main-content">
+          <Header 
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            onRestoreDraft={handleRestoreDraft}
+          />
+          {renderMainContent()}
         </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
 

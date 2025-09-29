@@ -1,0 +1,302 @@
+/* Theme Variables */
+:root {
+  /* Light Theme Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #333333;
+  --text-secondary: #6c757d;
+  --text-muted: #adb5bd;
+  --border-color: #e9ecef;
+  --shadow-light: rgba(0, 0, 0, 0.05);
+  --shadow-medium: rgba(0, 0, 0, 0.1);
+  --shadow-heavy: rgba(0, 0, 0, 0.15);
+  
+  /* Accent Colors (consistent across themes) */
+  --accent-primary: #852FEE;
+  --accent-primary-hover: #7C3AED;
+  --accent-secondary: #28a745;
+  --accent-secondary-hover: #218838;
+  --accent-danger: #dc3545;
+  --accent-danger-hover: #c82333;
+  --accent-info: #17a2b8;
+  --accent-info-hover: #138496;
+  
+  /* Component Specific */
+  --header-bg: var(--bg-primary);
+  --sidebar-bg: var(--bg-primary);
+  --card-bg: var(--bg-primary);
+  --modal-bg: var(--bg-primary);
+  --input-bg: var(--bg-primary);
+  --button-bg: var(--bg-secondary);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #852FEE 0%, #7C3AED 100%);
+  --gradient-secondary: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  --gradient-card: linear-gradient(135deg, #ffffff 0%, #f8fdfc 100%);
+  --gradient-modal: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  /* Dark Theme Colors */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #404040;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --border-color: #404040;
+  --shadow-light: rgba(0, 0, 0, 0.2);
+  --shadow-medium: rgba(0, 0, 0, 0.3);
+  --shadow-heavy: rgba(0, 0, 0, 0.4);
+  
+  /* Component Specific Dark */
+  --header-bg: #1a1a1a;
+  --sidebar-bg: #1a1a1a;
+  --card-bg: #2d2d2d;
+  --modal-bg: #2d2d2d;
+  --input-bg: #404040;
+  --button-bg: #404040;
+  
+  /* Dark Gradients */
+  --gradient-primary: linear-gradient(135deg, #852FEE 0%, #7C3AED 100%);
+  --gradient-secondary: linear-gradient(135deg, #2d2d2d 0%, #404040 100%);
+  --gradient-card: linear-gradient(135deg, #2d2d2d 0%, #353535 100%);
+  --gradient-modal: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+}
+
+/* Theme Transition */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Base Theme Styles */
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Header Theme */
+.header {
+  background-color: var(--header-bg);
+  border-bottom-color: var(--border-color);
+  box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+.page-title {
+  color: var(--text-primary);
+}
+
+.breadcrumb {
+  color: var(--text-secondary);
+}
+
+.search-input {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.search-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.search-icon {
+  color: var(--text-secondary);
+}
+
+.header-btn.secondary {
+  background-color: var(--button-bg);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.header-btn.secondary:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.icon-btn {
+  background-color: var(--button-bg);
+  color: var(--text-primary);
+}
+
+.icon-btn:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Sidebar Theme */
+.sidebar {
+  background-color: var(--sidebar-bg);
+  border-right-color: var(--border-color);
+}
+
+.sidebar-header {
+  border-bottom-color: var(--border-color);
+}
+
+.logo-text {
+  color: var(--text-primary);
+}
+
+.user-info {
+  border-bottom-color: var(--border-color);
+}
+
+.user-name {
+  color: var(--text-primary);
+}
+
+.user-role {
+  color: var(--text-secondary);
+}
+
+.nav-item {
+  color: var(--text-primary);
+}
+
+.nav-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+.nav-item.active {
+  background-color: var(--bg-tertiary);
+  color: var(--accent-primary);
+}
+
+/* Product Grid Theme */
+.product-grid-container {
+  background: var(--gradient-secondary);
+}
+
+.category-filters {
+  background: var(--gradient-secondary);
+}
+
+.category-btn {
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px var(--shadow-medium);
+}
+
+.category-btn:hover {
+  border-color: var(--accent-primary);
+  box-shadow: 0 4px 15px var(--shadow-heavy);
+}
+
+.product-card {
+  background: var(--gradient-card);
+  box-shadow: 0 4px 15px var(--shadow-medium);
+}
+
+.product-card:hover {
+  box-shadow: 0 8px 25px var(--shadow-heavy);
+}
+
+.product-name {
+  color: var(--text-primary);
+}
+
+.product-price {
+  color: var(--text-primary);
+}
+
+.loading-state,
+.empty-state {
+  background: var(--gradient-secondary);
+  color: var(--text-secondary);
+}
+
+/* Modal Theme */
+.draft-list-modal,
+.printer-settings-modal {
+  background: var(--gradient-modal);
+  border-color: var(--border-color);
+}
+
+.draft-list-header h2,
+.printer-settings-header h2 {
+  color: var(--text-primary);
+}
+
+.close-btn {
+  color: var(--text-primary);
+}
+
+/* Order Panel Theme */
+.order-panel {
+  background-color: var(--bg-primary);
+  border-left-color: var(--border-color);
+}
+
+.order-summary {
+  background: var(--gradient-card);
+  border-color: var(--border-color);
+}
+
+.summary-row {
+  color: var(--text-primary);
+}
+
+.action-btn.secondary {
+  background: var(--button-bg);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.action-btn.secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+/* Cart Theme */
+.cart-item {
+  background-color: var(--card-bg);
+  border-color: var(--border-color);
+}
+
+.item-name {
+  color: var(--text-primary);
+}
+
+.item-price {
+  color: var(--text-secondary);
+}
+
+/* Form Elements Theme */
+input, select, textarea {
+  background-color: var(--input-bg);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-primary);
+}
+
+/* Scrollbar Theme */
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gradient-primary);
+}
+
+/* Dark mode specific adjustments */
+[data-theme="dark"] .product-card::after {
+  background: var(--gradient-primary);
+}
+
+[data-theme="dark"] .category-btn::before {
+  background: linear-gradient(90deg, transparent, rgba(255, 152, 0, 0.3), transparent);
+}
+
+[data-theme="dark"] .loading-spinner {
+  border-color: var(--bg-tertiary);
+  border-top-color: var(--accent-primary);
+}
+
+/* Theme toggle animation */
+.theme-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

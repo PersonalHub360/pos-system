@@ -1,53 +1,158 @@
-import React, { useState } from 'react';
-import './OrderPanel.css';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import printService from '../services/PrintService';
+import './OrderPanel.css';
 
-const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart }) => {
-  const [selectedDining, setSelectedDining] = useState('');
+const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState, onDraftStateUsed }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [discountPercentage, setDiscountPercentage] = useState(0);
+
+  // Effect to restore draft state when provided
+  useEffect(() => {
+    if (draftState) {
+      setSelectedTable(draftState.table || '');
+      setDiscountPercentage(draftState.discountPercentage || 0);
+      
+      // Clear the draft state after using it
+      if (onDraftStateUsed) {
+        onDraftStateUsed();
+      }
+    }
+  }, [draftState, onDraftStateUsed]);
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const productDiscount = 24; // Fixed discount as shown in design
-  const extraDiscount = 0;
-  const couponDiscount = 0;
-  const total = subtotal - productDiscount - extraDiscount - couponDiscount;
+  const discountAmount = (subtotal * discountPercentage) / 100;
+  const total = subtotal - discountAmount;
 
   const handleQuantityChange = (productId, change) => {
-    const item = cart.find(item => item.id === productId);
-    if (item) {
-      const newQuantity = item.quantity + change;
-      onUpdateItem(productId, newQuantity);
+    if (change > 0) {
+      onUpdateItem(productId, change);
+    } else {
+      onRemoveItem(productId, Math.abs(change));
     }
   };
 
-  const handlePlaceOrder = async () => {
+  const handleDiscountEdit = () => {
+    // Direct custom percentage input
+    const customValue = prompt(`Enter discount percentage (0-100):`, discountPercentage.toString());
+    
+    if (customValue !== null && !isNaN(customValue)) {
+      const percentageValue = Math.max(0, Math.min(100, parseFloat(customValue)));
+      setDiscountPercentage(percentageValue);
+    }
+  };
+
+  const handlePOSAndPrint = async () => {
     if (cart.length === 0) {
-      alert('Please add items to cart before placing order');
+      alert('Please add items to cart before printing POS ticket');
+      return;
+    }
+    
+    if (!selectedTable) {
+      alert('Please select table before printing POS ticket');
       return;
     }
 
     setIsProcessing(true);
     try {
       const orderData = {
-        items: cart.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity,
-          price: item.price
-        })),
-        subtotal: subtotal,
-        discount: productDiscount,
-        extra_discount: extraDiscount,
-        coupon_discount: couponDiscount,
-        total: total
+        cart,
+        table: selectedTable,
+        subtotal,
+        discountPercentage,
+        discountAmount,
+        total,
+        timestamp: new Date().toISOString()
       };
 
-      const response = await axios.post('/api/orders', orderData);
-      
-      if (response.data) {
-        alert(`Order ${response.data.order_number} placed successfully!`);
-        onClearCart();
+      await printService.printBill(orderData);
+      alert('Receipt printed successfully!');
+    } catch (error) {
+      console.error('Print error:', error);
+      alert('Failed to print receipt. Please check your printer connection.');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDraft = () => {
+    if (cart.length === 0) {
+      alert('Cannot save empty cart as draft');
+      return;
+    }
+
+    const draftData = {
+      table: selectedTable,
+      cart: cart,
+      subtotal: subtotal,
+      discountPercentage: discountPercentage,
+      discountAmount: discountAmount,
+      total: total,
+      timestamp: new Date().toISOString()
+    };
+
+    // Save to localStorage
+    const existingDrafts = JSON.parse(localStorage.getItem('orderDrafts') || '[]');
+    existingDrafts.push(draftData);
+    localStorage.setItem('orderDrafts', JSON.stringify(existingDrafts));
+
+    alert('Order saved as draft!');
+    
+    // Clear current order
+    onClearCart();
+    setSelectedTable('');
+  };
+
+  const handlePlaceOrder = async (shouldPrint = false) => {
+    if (!selectedTable) {
+      alert('Please select table before placing order');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const orderData = {
+        cart,
+        table: selectedTable,
+        subtotal,
+        discountPercentage,
+        discountAmount,
+        total,
+        timestamp: new Date().toISOString()
+      };
+
+      // Send order to server
+      const response = await fetch('http://localhost:5000/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to place order');
       }
+
+      const result = await response.json();
+      
+      if (shouldPrint) {
+        try {
+          await printService.printBill(orderData);
+          alert('Order placed and bill printed successfully!');
+        } catch (printError) {
+          console.error('Print error:', printError);
+          alert('Order placed successfully, but printing failed. Please check your printer.');
+        }
+      } else {
+        alert('Order placed successfully!');
+      }
+
+      // Clear the cart and selections
+      onClearCart();
+      setSelectedTable('');
+      
     } catch (error) {
       console.error('Error placing order:', error);
       alert('Failed to place order. Please try again.');
@@ -61,33 +166,29 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart }) => {
       <div className="order-header">
         <div className="order-selects">
           <select 
-            value={selectedDining} 
-            onChange={(e) => setSelectedDining(e.target.value)}
-            className="dining-select"
-          >
-            <option value="">Select Dining</option>
-            <option value="dine-in">Dine In</option>
-            <option value="takeaway">Takeaway</option>
-            <option value="delivery">Delivery</option>
-          </select>
-          
-          <select 
             value={selectedTable} 
             onChange={(e) => setSelectedTable(e.target.value)}
             className="table-select"
+            style={{ 
+              backgroundColor: selectedTable ? '#e8f5e8' : '#fff',
+              borderColor: selectedTable ? '#4caf50' : '#ddd'
+            }}
           >
             <option value="">Select Table</option>
-            <option value="table-1">Table 1</option>
-            <option value="table-2">Table 2</option>
-            <option value="table-3">Table 3</option>
-            <option value="table-4">Table 4</option>
+            <option value="table-1">🪑 Table 1</option>
+            <option value="table-2">🪑 Table 2</option>
+            <option value="table-3">🪑 Table 3</option>
+            <option value="table-4">🪑 Table 4</option>
+            <option value="table-5">🪑 Table 5</option>
+            <option value="table-6">🪑 Table 6</option>
+            <option value="table-7">🪑 Table 7</option>
+            <option value="table-8">🪑 Table 8</option>
+            <option value="counter">🏪 Counter</option>
+            <option value="vip-1">⭐ VIP Table 1</option>
+            <option value="vip-2">⭐ VIP Table 2</option>
           </select>
         </div>
         
-        <div className="order-number">
-          <span className="order-icon">👤</span>
-          <span>Order #20</span>
-        </div>
       </div>
 
       <div className="order-items">
@@ -122,13 +223,6 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart }) => {
                     +
                   </button>
                 </div>
-                
-                <button 
-                  className="add-notes-btn"
-                  onClick={() => alert('Add notes functionality')}
-                >
-                  📝 Add Notes
-                </button>
               </div>
             </div>
           ))
@@ -141,16 +235,15 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart }) => {
           <span>{subtotal.toFixed(0)}$</span>
         </div>
         <div className="summary-row">
-          <span>Product Discount :</span>
-          <span>{productDiscount}$</span>
-        </div>
-        <div className="summary-row">
-          <span>Extra Discount :</span>
-          <span>✏️ {extraDiscount.toFixed(1)}$</span>
-        </div>
-        <div className="summary-row">
-          <span>Coupon discount :</span>
-          <span>✏️ {couponDiscount.toFixed(1)}$</span>
+          <span>Discount :</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span 
+              style={{ cursor: 'pointer', color: '#852FEE' }}
+              onClick={handleDiscountEdit}
+            >
+              ✏️ {discountPercentage}% ({discountAmount.toFixed(1)}$)
+            </span>
+          </div>
         </div>
         <div className="summary-row total">
           <span>Total :</span>
@@ -160,25 +253,33 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart }) => {
 
       <div className="order-actions">
         <div className="action-buttons-top">
-          <button className="action-btn secondary">
-            KOT & Print
-          </button>
-          <button className="action-btn secondary">
+          <button 
+            className="action-btn secondary"
+            onClick={handleDraft}
+            disabled={cart.length === 0}
+          >
             📄 Draft
           </button>
         </div>
         
         <div className="action-buttons-bottom">
           <button 
-            className="action-btn payment"
-            onClick={handlePlaceOrder}
+            className="action-btn secondary"
+            onClick={handlePOSAndPrint}
             disabled={isProcessing || cart.length === 0}
           >
-            {isProcessing ? 'Processing...' : 'Bill & Payment'}
+            {isProcessing ? 'Processing...' : 'Print Receipt'}
+          </button>
+          <button 
+            className="action-btn payment"
+            onClick={() => handlePlaceOrder(false)}
+            disabled={isProcessing || cart.length === 0}
+          >
+            {isProcessing ? 'Processing...' : 'Place Order'}
           </button>
           <button 
             className="action-btn print"
-            onClick={handlePlaceOrder}
+            onClick={() => handlePlaceOrder(true)}
             disabled={isProcessing || cart.length === 0}
           >
             {isProcessing ? 'Processing...' : 'Bill & Print'}

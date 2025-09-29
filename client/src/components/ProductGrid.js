@@ -11,7 +11,7 @@ const ProductGrid = ({
 }) => {
   const generateProductImage = (productName) => {
     // Create a simple SVG placeholder for each product
-    const colors = ['#ff9800', '#4caf50', '#2196f3', '#f44336', '#9c27b0'];
+    const colors = ['#852FEE', '#4caf50', '#2196f3', '#f44336', '#9c27b0'];
     const colorIndex = productName.length % colors.length;
     const color = colors[colorIndex];
     
@@ -30,14 +30,15 @@ const ProductGrid = ({
       <div className="product-grid-container">
         <div className="category-filters">
           {categories.map((category) => (
-            <button
-              key={category}
-              className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
-              onClick={() => onCategoryChange(category)}
-            >
-              {category}
-            </button>
-          ))}
+          <button
+            key={category}
+            className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
+            onClick={() => onCategoryChange(category)}
+            data-category={category}
+          >
+            {category}
+          </button>
+        ))}
         </div>
         <div className="loading-state">
           <div className="loading-spinner"></div>
@@ -55,6 +56,7 @@ const ProductGrid = ({
             key={category}
             className={`category-btn ${selectedCategory === category ? 'active' : ''}`}
             onClick={() => onCategoryChange(category)}
+            data-category={category}
           >
             {category}
           </button>
