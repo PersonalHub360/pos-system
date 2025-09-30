@@ -139,44 +139,88 @@ app.get('/api/products/:id', (req, res) => {
   });
 });
 
-// Create new order
+// Create order
 app.post('/api/orders', (req, res) => {
-  const { items, subtotal, discount = 0, extra_discount = 0, coupon_discount = 0, total } = req.body;
-  const orderNumber = `#${Math.floor(Math.random() * 1000)}`;
+  console.log('Received order request:', JSON.stringify(req.body, null, 2));
+  
+  const { items, subtotal, discount, total, table, timestamp } = req.body;
+  
+  // Validate required fields
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    console.error('Validation error: Items are required and must be a non-empty array');
+    return res.status(400).json({ error: 'Items are required and must be a non-empty array' });
+  }
+  
+  if (!subtotal || !total) {
+    console.error('Validation error: Subtotal and total are required');
+    return res.status(400).json({ error: 'Subtotal and total are required' });
+  }
 
-  db.run(
-    `INSERT INTO orders (order_number, subtotal, discount, extra_discount, coupon_discount, total) 
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [orderNumber, subtotal, discount, extra_discount, coupon_discount, total],
-    function(err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-
-      const orderId = this.lastID;
-
-      // Insert order items
-      const stmt = db.prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
-      
-      items.forEach(item => {
-        stmt.run([orderId, item.product_id, item.quantity, item.price]);
-      });
-      
-      stmt.finalize();
-
-      res.json({
+  const orderNumber = `ORD-${Date.now()}`;
+  console.log('Creating order with number:', orderNumber);
+  
+  // Insert order
+  const orderQuery = `INSERT INTO orders (order_number, subtotal, discount, total, status) VALUES (?, ?, ?, ?, 'pending')`;
+  
+  db.run(orderQuery, [orderNumber, subtotal, discount || 0, total], function(err) {
+    if (err) {
+      console.error('Error creating order:', err);
+      return res.status(500).json({ error: 'Failed to create order: ' + err.message });
+    }
+    
+    console.log('Order created with ID:', this.lastID);
+    const orderId = this.lastID;
+    
+    // Insert order items
+    const itemQuery = `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)`;
+    let itemsInserted = 0;
+    let hasError = false;
+    
+    if (items.length === 0) {
+      return res.json({
         id: orderId,
         order_number: orderNumber,
         subtotal,
-        discount,
-        extra_discount,
-        coupon_discount,
+        discount: discount || 0,
         total,
-        status: 'pending'
+        status: 'pending',
+        items: []
       });
     }
-  );
+    
+    items.forEach((item, index) => {
+      if (hasError) return;
+      
+      console.log(`Inserting item ${index + 1}:`, item);
+      
+      db.run(itemQuery, [orderId, item.product_id, item.quantity, item.price], function(err) {
+        if (err) {
+          console.error('Error inserting order item:', err);
+          if (!hasError) {
+            hasError = true;
+            return res.status(500).json({ error: 'Failed to create order items: ' + err.message });
+          }
+          return;
+        }
+        
+        console.log(`Item ${index + 1} inserted successfully`);
+        itemsInserted++;
+        
+        if (itemsInserted === items.length) {
+          console.log('All items inserted, sending response');
+          res.json({
+            id: orderId,
+            order_number: orderNumber,
+            subtotal,
+            discount: discount || 0,
+            total,
+            status: 'pending',
+            items
+          });
+        }
+      });
+    });
+  });
 });
 
 // Get all orders

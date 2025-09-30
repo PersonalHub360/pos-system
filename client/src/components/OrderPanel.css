@@ -452,6 +452,18 @@
   border-color: #EA580C;
 }
 
+/* Print Receipt Button - Sky Blue */
+.action-btn.print-receipt-btn {
+  background: linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%);
+  color: white;
+  border: 2px solid #0EA5E9;
+}
+
+.action-btn.print-receipt-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+  border-color: #0284C7;
+}
+
 /* Full width button styling */
 .action-btn.full-width {
   width: 100%;

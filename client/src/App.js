@@ -8,6 +8,7 @@ import ProductGrid from './components/ProductGrid';
 import OrderPanel from './components/OrderPanel';
 import Dashboard from './components/Dashboard';
 import ItemManagement from './components/ItemManagement';
+import StoreManagement from './components/StoreManagement';
 import SalesManagement from './components/SalesManagement';
 import TableManagement from './components/TableManagement';
 import Settings from './components/Settings';
@@ -23,7 +24,46 @@ function App() {
   const [draftState, setDraftState] = useState(null); // For restoring draft state
   const [currentView, setCurrentView] = useState('pos'); // Navigation state
 
+  // Invoice Settings State - shared between Settings and OrderPanel
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    invoicePrefix: 'INV',
+    invoiceNumberStart: 1000,
+    showTax: true,
+    showDiscount: true,
+    footerText: 'Thank you for your business!',
+    termsAndConditions: 'All sales are final. No returns without receipt.',
+    logoPosition: 'top-left',
+    multiCurrency: {
+      enabled: false,
+      primaryCurrency: 'USD',
+      secondaryCurrency: 'KHR',
+      tertiaryCurrency: '',
+      exchangeRates: {
+        'USD_TO_KHR': 4100,
+        'USD_TO_EUR': 0.85,
+        'USD_TO_BDT': 110,
+        'USD_TO_INR': 83
+      },
+      showCurrencyCount: 1
+    }
+  });
+
   useEffect(() => {
+    // Load invoice settings from localStorage
+    const savedInvoiceSettings = localStorage.getItem('invoiceSettings');
+    console.log('Loading invoice settings from localStorage:', savedInvoiceSettings);
+    if (savedInvoiceSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedInvoiceSettings);
+        console.log('Parsed invoice settings:', parsedSettings);
+        setInvoiceSettings(parsedSettings);
+      } catch (error) {
+        console.error('Error parsing saved invoice settings:', error);
+      }
+    } else {
+      console.log('No saved invoice settings found, using defaults');
+    }
+
     // Initialize data fetching with proper error handling
     const initializeData = async () => {
       try {
@@ -36,6 +76,12 @@ function App() {
     
     initializeData();
   }, []);
+
+  // Save invoice settings to localStorage whenever they change
+  useEffect(() => {
+    console.log('Saving invoice settings to localStorage:', invoiceSettings);
+    localStorage.setItem('invoiceSettings', JSON.stringify(invoiceSettings));
+  }, [invoiceSettings]);
 
   const fetchCategories = async (retryCount = 0) => {
     const maxRetries = 3;
@@ -194,6 +240,10 @@ function App() {
       />;
     }
     
+    if (currentView === 'store management') {
+      return <StoreManagement />;
+    }
+    
     if (currentView === 'sales management') {
       return <SalesManagement />;
     }
@@ -203,7 +253,10 @@ function App() {
     }
     
     if (currentView === 'settings') {
-      return <Settings />;
+      return <Settings 
+        invoiceSettings={invoiceSettings}
+        setInvoiceSettings={setInvoiceSettings}
+      />;
     }
     
     // Default POS view
@@ -227,6 +280,7 @@ function App() {
             onClearCart={clearCart}
             draftState={draftState}
             onDraftStateUsed={() => setDraftState(null)}
+            invoiceSettings={invoiceSettings}
           />
         </div>
       </div>
@@ -240,7 +294,7 @@ function App() {
   return (
     <ThemeProvider>
       <div className="app">
-        <Sidebar onNavigate={handleNavigation} />
+        <Sidebar onNavigate={handleNavigation} currentView={currentView} />
         <div className="main-content">
           <Header 
             searchTerm={searchTerm}

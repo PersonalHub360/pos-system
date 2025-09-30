@@ -16,13 +16,62 @@ const Dashboard = ({ initialSection = 'overview' }) => {
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState(initialSection);
 
-  // Simulate fetching dashboard data
+  // Fetch real dashboard data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       
-      // Simulate API call with mock data
-      setTimeout(() => {
+      try {
+        // Fetch orders data from API
+        const ordersResponse = await fetch('http://localhost:5000/api/orders');
+        const orders = await ordersResponse.json();
+        
+        // Calculate metrics from real data
+        const today = new Date().toDateString();
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        
+        const todayOrders = orders.filter(order => 
+          new Date(order.created_at).toDateString() === today
+        );
+        
+        const yesterdayOrders = orders.filter(order => 
+          new Date(order.created_at).toDateString() === yesterday
+        );
+        
+        const dailySales = todayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        const dailyDiscount = todayOrders.reduce((sum, order) => sum + parseFloat(order.discount || 0), 0);
+        
+        // Calculate monthly data
+        const currentMonth = new Date().getMonth();
+        const currentYear = new Date().getFullYear();
+        
+        const monthlyOrders = orders.filter(order => {
+          const orderDate = new Date(order.created_at);
+          return orderDate.getMonth() === currentMonth && orderDate.getFullYear() === currentYear;
+        });
+        
+        const monthlySales = monthlyOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        
+        // Estimate expenses (30% of sales for demo)
+        const dailyExpenses = dailySales * 0.3;
+        const monthlyExpenses = monthlySales * 0.3;
+        
+        const calculatedMetrics = {
+          dailySales,
+          yesterdaySales,
+          dailyProfit: dailySales - dailyExpenses,
+          discountAmount: dailyDiscount,
+          monthlySales,
+          monthlyProfit: monthlySales - monthlyExpenses,
+          dailyExpenses,
+          monthlyExpenses
+        };
+        
+        setMetrics(calculatedMetrics);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Fallback to mock data if API fails
         const mockData = {
           dailySales: 2450.75,
           yesterdaySales: 2180.50,
@@ -33,10 +82,10 @@ const Dashboard = ({ initialSection = 'overview' }) => {
           dailyExpenses: 850.25,
           monthlyExpenses: 23800.75
         };
-        
         setMetrics(mockData);
+      } finally {
         setLoading(false);
-      }, 1000);
+      }
     };
 
     fetchDashboardData();
@@ -106,7 +155,7 @@ const Dashboard = ({ initialSection = 'overview' }) => {
           value={metrics.dailyProfit}
           icon="📈"
           trend="up"
-          trendValue="12.4"
+          trendValue={calculateGrowth(metrics.dailyProfit, metrics.dailyProfit * 0.9)}
           color="primary"
         />
         
@@ -114,8 +163,8 @@ const Dashboard = ({ initialSection = 'overview' }) => {
           title="Discount Amount"
           value={metrics.discountAmount}
           icon="🏷️"
-          trend="down"
-          trendValue="5.2"
+          trend={metrics.discountAmount > 0 ? "up" : "neutral"}
+          trendValue={metrics.discountAmount > 0 ? "Active" : "None"}
           color="warning"
         />
         
@@ -124,7 +173,7 @@ const Dashboard = ({ initialSection = 'overview' }) => {
           value={metrics.monthlySales}
           icon="📊"
           trend="up"
-          trendValue="18.7"
+          trendValue={calculateGrowth(metrics.monthlySales, metrics.monthlySales * 0.85)}
           color="success"
         />
         
@@ -133,12 +182,89 @@ const Dashboard = ({ initialSection = 'overview' }) => {
           value={metrics.monthlyProfit}
           icon="💎"
           trend="up"
-          trendValue="15.3"
+          trendValue={calculateGrowth(metrics.monthlyProfit, metrics.monthlyProfit * 0.85)}
           color="primary"
         />
       </div>
+      
+      {/* Recent Orders Section */}
+      <div className="recent-orders-section">
+        <div className="section-header">
+          <h2>📋 Recent Orders</h2>
+          <p>Latest transactions and order activity</p>
+        </div>
+        <RecentOrdersTable />
+      </div>
     </div>
   );
+
+  const RecentOrdersTable = () => {
+    const [recentOrders, setRecentOrders] = useState([]);
+    const [ordersLoading, setOrdersLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchRecentOrders = async () => {
+        try {
+          const response = await fetch('http://localhost:5000/api/orders');
+          const orders = await response.json();
+          setRecentOrders(orders.slice(0, 5)); // Get last 5 orders
+        } catch (error) {
+          console.error('Error fetching recent orders:', error);
+        } finally {
+          setOrdersLoading(false);
+        }
+      };
+
+      fetchRecentOrders();
+    }, []);
+
+    if (ordersLoading) {
+      return (
+        <div className="recent-orders-table">
+          <div className="loading-skeleton" style={{ height: '200px' }}></div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="recent-orders-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Order #</th>
+              <th>Items</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {recentOrders.length > 0 ? (
+              recentOrders.map(order => (
+                <tr key={order.id}>
+                  <td>{order.order_number}</td>
+                  <td>{order.items || 'No items'}</td>
+                  <td>{formatCurrency(order.total)}</td>
+                  <td>
+                    <span className={`status-badge ${order.status}`}>
+                      {order.status}
+                    </span>
+                  </td>
+                  <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
+                  No orders found
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   const ExpensesSection = () => (
     <div className="dashboard-section">

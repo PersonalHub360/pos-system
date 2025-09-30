@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
 
-const Settings = () => {
+const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
   // State management for different sections
   const [activeSection, setActiveSection] = useState('staff');
   const [showModal, setShowModal] = useState(false);
@@ -55,15 +55,7 @@ const Settings = () => {
   });
 
   // Invoice Settings State
-  const [invoiceSettings, setInvoiceSettings] = useState({
-    invoicePrefix: 'INV',
-    invoiceNumberStart: 1000,
-    showTax: true,
-    showDiscount: true,
-    footerText: 'Thank you for your business!',
-    termsAndConditions: 'All sales are final. No returns without receipt.',
-    logoPosition: 'top-left'
-  });
+  // Removed local state - now using props from App.js
 
   // Order Settings State
   const [orderSettings, setOrderSettings] = useState({
@@ -176,10 +168,52 @@ const Settings = () => {
 
   const handleInvoiceSettingsChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setInvoiceSettings(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    console.log('Settings: handleInvoiceSettingsChange called', { name, value, type, checked });
+    
+    if (name.startsWith('multiCurrency.')) {
+      const field = name.split('.')[1];
+      let fieldValue;
+      if (type === 'checkbox') {
+        fieldValue = checked;
+      } else if (field === 'showCurrencyCount') {
+        fieldValue = parseInt(value); // Ensure showCurrencyCount is always a number
+      } else if (type === 'number') {
+        fieldValue = parseInt(value);
+      } else {
+        fieldValue = value;
+      }
+      
+      const newSettings = {
+        ...invoiceSettings,
+        multiCurrency: {
+          ...invoiceSettings.multiCurrency,
+          [field]: fieldValue
+        }
+      };
+      console.log('Settings: Updating multiCurrency settings', newSettings);
+      setInvoiceSettings(newSettings);
+    } else if (name.startsWith('exchangeRate.')) {
+      const rateKey = name.split('.')[1];
+      const newSettings = {
+        ...invoiceSettings,
+        multiCurrency: {
+          ...invoiceSettings.multiCurrency,
+          exchangeRates: {
+            ...invoiceSettings.multiCurrency.exchangeRates,
+            [rateKey]: parseFloat(value) || 0
+          }
+        }
+      };
+      console.log('Settings: Updating exchange rates', newSettings);
+      setInvoiceSettings(newSettings);
+    } else {
+      const newSettings = {
+        ...invoiceSettings,
+        [name]: type === 'checkbox' ? checked : value
+      };
+      console.log('Settings: Updating general settings', newSettings);
+      setInvoiceSettings(newSettings);
+    }
   };
 
   const handleOrderSettingsChange = (e) => {
@@ -229,6 +263,9 @@ const Settings = () => {
   };
 
   const saveInvoiceSettings = () => {
+    // Save to localStorage (this is now handled automatically by App.js useEffect)
+    // But we can add additional validation or processing here if needed
+    localStorage.setItem('invoiceSettings', JSON.stringify(invoiceSettings));
     alert('Invoice settings saved successfully!');
   };
 
@@ -652,6 +689,132 @@ const Settings = () => {
                 />
                 Show Discount on Invoice
               </label>
+            </div>
+
+            {/* Multi-Currency Settings */}
+            <div className="multi-currency-section">
+              <h3>💱 Multi-Currency Receipt Settings</h3>
+              <div className="checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="multiCurrency.enabled"
+                    checked={invoiceSettings.multiCurrency.enabled}
+                    onChange={handleInvoiceSettingsChange}
+                  />
+                  Enable Multi-Currency Display on Receipts
+                </label>
+              </div>
+
+              {invoiceSettings.multiCurrency.enabled && (
+                <div className="multi-currency-config">
+                  <div className="form-group">
+                    <label>Number of Currencies to Display</label>
+                    <select
+                      name="multiCurrency.showCurrencyCount"
+                      value={invoiceSettings.multiCurrency.showCurrencyCount}
+                      onChange={handleInvoiceSettingsChange}
+                    >
+                      <option value={1}>1 Currency (Primary Only)</option>
+                      <option value={2}>2 Currencies</option>
+                      <option value={3}>3 Currencies</option>
+                    </select>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Primary Currency</label>
+                      <select
+                        name="multiCurrency.primaryCurrency"
+                        value={invoiceSettings.multiCurrency.primaryCurrency}
+                        onChange={handleInvoiceSettingsChange}
+                      >
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="KHR">KHR - Cambodian Riel</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="BDT">BDT - Bangladeshi Taka</option>
+                        <option value="INR">INR - Indian Rupee</option>
+                      </select>
+                    </div>
+
+                    {invoiceSettings.multiCurrency.showCurrencyCount >= 2 && (
+                      <div className="form-group">
+                        <label>Secondary Currency</label>
+                        <select
+                          name="multiCurrency.secondaryCurrency"
+                          value={invoiceSettings.multiCurrency.secondaryCurrency}
+                          onChange={handleInvoiceSettingsChange}
+                        >
+                          <option value="KHR">KHR - Cambodian Riel</option>
+                          <option value="USD">USD - US Dollar</option>
+                          <option value="EUR">EUR - Euro</option>
+                          <option value="BDT">BDT - Bangladeshi Taka</option>
+                          <option value="INR">INR - Indian Rupee</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {invoiceSettings.multiCurrency.showCurrencyCount >= 3 && (
+                      <div className="form-group">
+                        <label>Tertiary Currency</label>
+                        <select
+                          name="multiCurrency.tertiaryCurrency"
+                          value={invoiceSettings.multiCurrency.tertiaryCurrency}
+                          onChange={handleInvoiceSettingsChange}
+                        >
+                          <option value="">Select Currency</option>
+                          <option value="EUR">EUR - Euro</option>
+                          <option value="BDT">BDT - Bangladeshi Taka</option>
+                          <option value="INR">INR - Indian Rupee</option>
+                          <option value="USD">USD - US Dollar</option>
+                          <option value="KHR">KHR - Cambodian Riel</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Exchange Rate Settings */}
+                  <div className="exchange-rates-section">
+                    <h4>Exchange Rates (Base: {invoiceSettings.multiCurrency.primaryCurrency})</h4>
+                    <div className="form-grid">
+                      {invoiceSettings.multiCurrency.showCurrencyCount >= 2 && 
+                       invoiceSettings.multiCurrency.secondaryCurrency !== invoiceSettings.multiCurrency.primaryCurrency && (
+                        <div className="form-group">
+                          <label>
+                            1 {invoiceSettings.multiCurrency.primaryCurrency} = ? {invoiceSettings.multiCurrency.secondaryCurrency}
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            name={`exchangeRate.${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.secondaryCurrency}`}
+                            value={invoiceSettings.multiCurrency.exchangeRates[`${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.secondaryCurrency}`] || ''}
+                            onChange={handleInvoiceSettingsChange}
+                            placeholder="Enter exchange rate"
+                          />
+                        </div>
+                      )}
+
+                      {invoiceSettings.multiCurrency.showCurrencyCount >= 3 && 
+                       invoiceSettings.multiCurrency.tertiaryCurrency && 
+                       invoiceSettings.multiCurrency.tertiaryCurrency !== invoiceSettings.multiCurrency.primaryCurrency && (
+                        <div className="form-group">
+                          <label>
+                            1 {invoiceSettings.multiCurrency.primaryCurrency} = ? {invoiceSettings.multiCurrency.tertiaryCurrency}
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            name={`exchangeRate.${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.tertiaryCurrency}`}
+                            value={invoiceSettings.multiCurrency.exchangeRates[`${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.tertiaryCurrency}`] || ''}
+                            onChange={handleInvoiceSettingsChange}
+                            placeholder="Enter exchange rate"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

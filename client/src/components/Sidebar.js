@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({ onNavigate }) => {
+const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   
   const menuItems = [
-    { icon: '📊', label: 'Dashboard', active: false, color: '#3B82F6' },
-    { icon: '🏪', label: 'Pos', active: true, color: '#10B981' },
-    { icon: '📦', label: 'Item Management', active: false, color: '#F59E0B' },
-    { icon: '💰', label: 'Sales Management', active: false, color: '#EF4444' },
-    { icon: '🍽️', label: 'Table Management', active: false, color: '#8B5CF6' },
-    { icon: '📈', label: 'Reports', active: false, color: '#06B6D4' }
+    { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6' },
+    { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981' },
+    { icon: '🏬', label: 'Store Management', active: currentView === 'store management', color: '#F59E0B' },
+    { icon: '💰', label: 'Sales Management', active: currentView === 'sales management', color: '#EF4444' },
+    { icon: '🍽️', label: 'Table Management', active: currentView === 'table management', color: '#8B5CF6' },
+    { icon: '📈', label: 'Reports', active: currentView === 'reports', color: '#06B6D4' }
   ];
 
   const bottomMenuItems = [
-    { icon: '⚙️', label: 'Settings', active: false, color: '#6B7280' }
+    { icon: '⚙️', label: 'Settings', active: currentView === 'settings', color: '#6B7280' }
   ];
 
   const handleMenuClick = (item, index) => {

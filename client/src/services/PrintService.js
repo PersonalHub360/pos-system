@@ -126,22 +126,106 @@ class PrintService {
   }
 
   /**
+   * Get currency symbol for a given currency code
+   */
+  getCurrencySymbol(currencyCode) {
+    const symbols = {
+      'USD': '$',
+      'KHR': '៛',
+      'EUR': '€',
+      'BDT': '৳',
+      'INR': '₹'
+    };
+    return symbols[currencyCode] || currencyCode;
+  }
+
+  /**
+   * Convert amount to different currency using exchange rate
+   */
+  convertCurrency(amount, fromCurrency, toCurrency, exchangeRates) {
+    if (fromCurrency === toCurrency) {
+      return amount;
+    }
+    
+    const rateKey = `${fromCurrency}_TO_${toCurrency}`;
+    const rate = exchangeRates[rateKey];
+    
+    if (!rate) {
+      console.warn(`Exchange rate not found for ${rateKey}`);
+      return amount;
+    }
+    
+    return amount * rate;
+  }
+
+  /**
+   * Format amount with currency symbol and proper decimal places
+   */
+  formatCurrencyAmount(amount, currencyCode) {
+    const symbol = this.getCurrencySymbol(currencyCode);
+    
+    // Different currencies have different decimal place conventions
+    let decimals = 2;
+    if (currencyCode === 'KHR') {
+      decimals = 0; // Cambodian Riel typically doesn't use decimals
+    }
+    
+    return `${symbol}${amount.toFixed(decimals)}`;
+  }
+
+  /**
+   * Generate multi-currency display for an amount
+   */
+  formatMultiCurrencyAmount(amount, multiCurrencySettings) {
+    if (!multiCurrencySettings || !multiCurrencySettings.enabled) {
+      return `$${amount.toFixed(2)}`;
+    }
+
+    const { 
+      primaryCurrency, 
+      secondaryCurrency, 
+      tertiaryCurrency, 
+      showCurrencyCount, 
+      exchangeRates 
+    } = multiCurrencySettings;
+
+    let result = [];
+    
+    // Primary currency (base amount)
+    result.push(this.formatCurrencyAmount(amount, primaryCurrency));
+    
+    // Secondary currency
+    if (showCurrencyCount >= 2 && secondaryCurrency && secondaryCurrency !== primaryCurrency) {
+      const convertedAmount = this.convertCurrency(amount, primaryCurrency, secondaryCurrency, exchangeRates);
+      result.push(this.formatCurrencyAmount(convertedAmount, secondaryCurrency));
+    }
+    
+    // Tertiary currency
+    if (showCurrencyCount >= 3 && tertiaryCurrency && tertiaryCurrency !== primaryCurrency) {
+      const convertedAmount = this.convertCurrency(amount, primaryCurrency, tertiaryCurrency, exchangeRates);
+      result.push(this.formatCurrencyAmount(convertedAmount, tertiaryCurrency));
+    }
+    
+    return result.join(' / ');
+  }
+
+  /**
    * Format receipt content for different printer types
    */
-  formatReceipt(orderData) {
+  formatReceipt(orderData, multiCurrencySettings = null) {
     const { items, subtotal, discount, total, dining, table, timestamp } = orderData;
     
     if (this.printerType === 'thermal') {
-      return this.formatThermalReceipt(orderData);
+      return this.formatThermalReceipt(orderData, multiCurrencySettings);
     } else {
-      return this.formatStandardReceipt(orderData);
+      return this.formatStandardReceipt(orderData, multiCurrencySettings);
     }
   }
 
   /**
    * Format receipt for thermal printers (48 characters wide)
    */
-  formatThermalReceipt(orderData) {
+  formatThermalReceipt(orderData, multiCurrencySettings = null) {
     const { items, subtotal, discount, total, dining, table } = orderData;
     const width = this.printerSettings.thermal.width;
     
@@ -159,7 +243,7 @@ class PrintService {
     receipt += 'ITEMS:\n';
     items.forEach(item => {
       const itemLine = `${item.quantity}x ${item.name}`;
-      const price = `$${(item.price * item.quantity).toFixed(2)}`;
+      const price = this.formatMultiCurrencyAmount(item.price * item.quantity, multiCurrencySettings);
       const spaces = width - itemLine.length - price.length;
       receipt += itemLine + ' '.repeat(Math.max(1, spaces)) + price + '\n';
     });
@@ -167,12 +251,17 @@ class PrintService {
     receipt += '-'.repeat(width) + '\n';
     
     // Totals
-    receipt += this.formatLine('Subtotal:', `$${subtotal.toFixed(2)}`, width) + '\n';
+    const subtotalFormatted = this.formatMultiCurrencyAmount(subtotal, multiCurrencySettings);
+    receipt += this.formatLine('Subtotal:', subtotalFormatted, width) + '\n';
+    
     if (discount > 0) {
-      receipt += this.formatLine('Discount:', `-$${discount.toFixed(2)}`, width) + '\n';
+      const discountFormatted = this.formatMultiCurrencyAmount(discount, multiCurrencySettings);
+      receipt += this.formatLine('Discount:', `-${discountFormatted}`, width) + '\n';
     }
+    
     receipt += '='.repeat(width) + '\n';
-    receipt += this.formatLine('TOTAL:', `$${total.toFixed(2)}`, width) + '\n';
+    const totalFormatted = this.formatMultiCurrencyAmount(total, multiCurrencySettings);
+    receipt += this.formatLine('TOTAL:', totalFormatted, width) + '\n';
     receipt += '='.repeat(width) + '\n';
     
     return receipt;
@@ -181,7 +270,7 @@ class PrintService {
   /**
    * Format receipt for standard printers (HTML)
    */
-  formatStandardReceipt(orderData) {
+  formatStandardReceipt(orderData, multiCurrencySettings = null) {
     const { items, subtotal, discount, total, dining, table } = orderData;
     
     return `
@@ -200,7 +289,7 @@ class PrintService {
           ${items.map(item => `
             <div style="display: flex; justify-content: space-between;">
               <span>${item.quantity}x ${item.name}</span>
-              <span>$${(item.price * item.quantity).toFixed(2)}</span>
+              <span>${this.formatMultiCurrencyAmount(item.price * item.quantity, multiCurrencySettings)}</span>
             </div>
           `).join('')}
         </div>
@@ -208,17 +297,17 @@ class PrintService {
         <div style="border-top: 1px solid #000; padding-top: 10px;">
           <div style="display: flex; justify-content: space-between;">
             <span>Subtotal:</span>
-            <span>$${subtotal.toFixed(2)}</span>
+            <span>${this.formatMultiCurrencyAmount(subtotal, multiCurrencySettings)}</span>
           </div>
           ${discount > 0 ? `
             <div style="display: flex; justify-content: space-between;">
               <span>Discount:</span>
-              <span>-$${discount.toFixed(2)}</span>
+              <span>-${this.formatMultiCurrencyAmount(discount, multiCurrencySettings)}</span>
             </div>
           ` : ''}
           <div style="border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; font-weight: bold; display: flex; justify-content: space-between;">
             <span>TOTAL:</span>
-            <span>$${total.toFixed(2)}</span>
+            <span>${this.formatMultiCurrencyAmount(total, multiCurrencySettings)}</span>
           </div>
         </div>
         
@@ -366,9 +455,9 @@ class PrintService {
   /**
    * Main print function - routes to appropriate printer type
    */
-  async print(orderData) {
+  async print(orderData, multiCurrencySettings = null) {
     try {
-      const content = this.formatReceipt(orderData);
+      const content = this.formatReceipt(orderData, multiCurrencySettings);
       
       switch (this.printerType) {
         case 'thermal':
@@ -388,16 +477,16 @@ class PrintService {
   /**
    * Print receipt (for "Print Receipt" button)
    */
-  async printReceipt(orderData) {
-    return await this.print(orderData);
+  async printReceipt(orderData, multiCurrencySettings = null) {
+    return await this.print(orderData, multiCurrencySettings);
   }
 
   /**
    * Print bill (for "Bill & Print" button) - same as receipt but could have different formatting
    */
-  async printBill(orderData) {
+  async printBill(orderData, multiCurrencySettings = null) {
     // For now, same as receipt. Could be customized for different bill format
-    return await this.print(orderData);
+    return await this.print(orderData, multiCurrencySettings);
   }
 }
 

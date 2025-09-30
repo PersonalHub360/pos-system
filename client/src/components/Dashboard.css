@@ -352,6 +352,74 @@
   font-weight: 800;
 }
 
+/* Recent Orders Section */
+.recent-orders-section {
+  margin-top: 32px;
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 15px var(--shadow-medium);
+  border: 1px solid var(--border-color);
+}
+
+.recent-orders-table {
+  overflow-x: auto;
+}
+
+.recent-orders-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.recent-orders-table th,
+.recent-orders-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.recent-orders-table th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recent-orders-table td {
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.recent-orders-table tr:hover {
+  background: var(--bg-secondary);
+}
+
+.recent-orders-table .status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.recent-orders-table .status-badge.pending {
+  background: rgba(251, 191, 36, 0.1);
+  color: #d97706;
+}
+
+.recent-orders-table .status-badge.completed {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.recent-orders-table .status-badge.cancelled {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .metrics-grid {
@@ -395,6 +463,19 @@
   
   .section-header h2 {
     font-size: 20px;
+  }
+  
+  .recent-orders-section {
+    padding: 16px;
+  }
+  
+  .recent-orders-table {
+    font-size: 12px;
+  }
+  
+  .recent-orders-table th,
+  .recent-orders-table td {
+    padding: 8px 12px;
   }
 }
 

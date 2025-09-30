@@ -3,7 +3,7 @@ import axios from 'axios';
 import printService from '../services/PrintService';
 import './OrderPanel.css';
 
-const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState, onDraftStateUsed }) => {
+const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState, onDraftStateUsed, invoiceSettings }) => {
   const [selectedTable, setSelectedTable] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -57,16 +57,20 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
     setIsProcessing(true);
     try {
       const orderData = {
-        cart,
-        table: selectedTable,
+        items: cart.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          name: item.name
+        })),
         subtotal,
-        discountPercentage,
-        discountAmount,
+        discount: discountAmount,
         total,
+        table: selectedTable,
         timestamp: new Date().toISOString()
       };
 
-      await printService.printBill(orderData);
+      await printService.printBill(orderData, invoiceSettings?.multiCurrency);
       alert('Receipt printed successfully!');
     } catch (error) {
       console.error('Print error:', error);
@@ -112,17 +116,26 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
 
     setIsProcessing(true);
     try {
+      // Convert cart to items format expected by server
+      const items = cart.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        name: item.name
+      }));
+
       const orderData = {
-        cart,
+        items,
         table: selectedTable,
         subtotal,
-        discountPercentage,
-        discountAmount,
+        discount: discountAmount,
         total,
         timestamp: new Date().toISOString()
       };
 
       // Send order to server
+      console.log('Sending order data:', JSON.stringify(orderData, null, 2));
+      
       const response = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: {
@@ -131,15 +144,20 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
         body: JSON.stringify(orderData),
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Failed to place order');
+        const errorData = await response.text();
+        console.error('Server error response:', errorData);
+        throw new Error(`Failed to place order: ${response.status} - ${errorData}`);
       }
 
       const result = await response.json();
       
       if (shouldPrint) {
         try {
-          await printService.printBill(orderData);
+          await printService.printBill(orderData, invoiceSettings?.multiCurrency);
           alert('Order placed and bill printed successfully!');
         } catch (printError) {
           console.error('Print error:', printError);
@@ -276,6 +294,16 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
             disabled={isProcessing || cart.length === 0}
           >
             {isProcessing ? 'Processing...' : 'PLACE ORDER'}
+          </button>
+        </div>
+        
+        <div className="action-buttons-row">
+          <button 
+            className="action-btn print-receipt-btn full-width"
+            onClick={handlePOSAndPrint}
+            disabled={isProcessing || cart.length === 0}
+          >
+            {isProcessing ? 'Processing...' : '🖨️ PRINT RECEIPT'}
           </button>
         </div>
       </div>
