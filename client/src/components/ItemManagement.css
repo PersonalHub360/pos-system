@@ -757,3 +757,97 @@
     font-size: 32px;
   }
 }
+
+/* Photo Upload Styles */
+.photo-upload-group {
+  margin-bottom: 24px;
+}
+
+.photo-upload-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.photo-upload-area:hover {
+  border-color: #8b5cf6;
+  background: #f3f4f6;
+}
+
+.photo-upload-area.drag-active {
+  border-color: #8b5cf6;
+  background: #ede9fe;
+  transform: scale(1.02);
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  font-size: 48px;
+  color: #9ca3af;
+  margin-bottom: 8px;
+}
+
+.upload-placeholder p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.upload-hint {
+  font-size: 14px !important;
+  color: #9ca3af !important;
+  font-weight: 400 !important;
+}
+
+.photo-preview {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.photo-preview img {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  object-fit: cover;
+}
+
+.remove-photo {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+  transition: all 0.2s ease;
+}
+
+.remove-photo:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}

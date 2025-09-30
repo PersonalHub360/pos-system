@@ -92,7 +92,8 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 20px;
-  min-height: 0;
+  min-height: 400px;
+  max-height: 400px;
   background: var(--bg-secondary);
   border-radius: 16px;
   padding: 16px;
@@ -330,15 +331,6 @@
 }
 
 .summary-row.total span:last-child {
-  font-size: 20px;
-  font-weight: 800;
-  color: #667eea;
-  min-width: 80px;
-}
-
-
-
-.summary-row.total span:last-child {
   font-size: 28px;
   font-weight: 900;
   background: linear-gradient(135deg, 
@@ -358,6 +350,18 @@
   position: relative;
   z-index: 2;
   min-width: 80px;
+}
+
+/* Special styling for zero total amount */
+.summary-row.total span:last-child[data-amount="0.00"] {
+  color: #000000 !important;
+  font-weight: 900 !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  -webkit-text-fill-color: initial !important;
+  background-clip: initial !important;
+  text-shadow: none !important;
+  filter: none !important;
 }
 
 .order-actions {

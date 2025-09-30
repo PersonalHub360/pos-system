@@ -5,10 +5,9 @@ const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   
   const menuItems = [
-    { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6' },
     { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981' },
-    { icon: '🏬', label: 'Store Management', active: currentView === 'store management', color: '#F59E0B' },
-    { icon: '💰', label: 'Sales Management', active: currentView === 'sales management', color: '#EF4444' },
+    { icon: '📦', label: 'Items', active: currentView === 'items', color: '#F59E0B' },
+    { icon: '📋', label: 'Inventory Manage', active: currentView === 'inventory manage', color: '#EF4444' },
     { icon: '🍽️', label: 'Table Management', active: currentView === 'table management', color: '#8B5CF6' },
     { icon: '📈', label: 'Reports', active: currentView === 'reports', color: '#06B6D4' }
   ];
@@ -44,12 +43,9 @@ const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
       </div>
       
       <div className="user-info">
-        <div className="user-avatar">
-          <img src="/api/placeholder/40/40" alt="User" />
-        </div>
         <div className="user-details">
-          <div className="user-name">Nahid Zaman</div>
-          <div className="user-role">Product Designer</div>
+          <div className="user-name">James Bond</div>
+          <div className="user-role">Owner</div>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './DraftList.css';
 
-const DraftList = ({ isOpen, onClose, onRestoreDraft }) => {
+const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrders }) => {
   const [drafts, setDrafts] = useState([]);
   const [selectedDrafts, setSelectedDrafts] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -10,10 +10,11 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft }) => {
     if (isOpen) {
       loadDrafts();
     }
-  }, [isOpen]);
+  }, [isOpen, draftOrders]);
 
   const loadDrafts = () => {
-    const savedDrafts = JSON.parse(localStorage.getItem('orderDrafts') || '[]');
+    // Use draftOrders prop if available, otherwise load from localStorage
+    const savedDrafts = draftOrders || JSON.parse(localStorage.getItem('orderDrafts') || '[]');
     setDrafts(savedDrafts);
     setSelectedDrafts([]);
     setSelectAll(false);
@@ -42,6 +43,11 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft }) => {
       setDrafts(updatedDrafts);
       localStorage.setItem('orderDrafts', JSON.stringify(updatedDrafts));
       
+      // Update parent state if available
+      if (setDraftOrders) {
+        setDraftOrders(updatedDrafts);
+      }
+      
       // Update selected drafts
       setSelectedDrafts(selectedDrafts.filter(i => i !== index).map(i => i > index ? i - 1 : i));
     }
@@ -57,6 +63,12 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft }) => {
       const updatedDrafts = drafts.filter((_, index) => !selectedDrafts.includes(index));
       setDrafts(updatedDrafts);
       localStorage.setItem('orderDrafts', JSON.stringify(updatedDrafts));
+      
+      // Update parent state if available
+      if (setDraftOrders) {
+        setDraftOrders(updatedDrafts);
+      }
+      
       setSelectedDrafts([]);
       setSelectAll(false);
     }
@@ -137,6 +149,11 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft }) => {
       const updatedDrafts = drafts.filter((_, i) => i !== index);
       setDrafts(updatedDrafts);
       localStorage.setItem('orderDrafts', JSON.stringify(updatedDrafts));
+      
+      // Update parent state if available
+      if (setDraftOrders) {
+        setDraftOrders(updatedDrafts);
+      }
       
       onClose();
       alert('Draft order restored successfully!');

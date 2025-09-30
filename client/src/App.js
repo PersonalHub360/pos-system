@@ -11,6 +11,10 @@ import ItemManagement from './components/ItemManagement';
 import StoreManagement from './components/StoreManagement';
 import SalesManagement from './components/SalesManagement';
 import TableManagement from './components/TableManagement';
+import InventoryManage from './components/InventoryManage';
+import Pos from './components/Pos';
+import Reports from './components/Reports';
+import Items from './components/Items';
 import Settings from './components/Settings';
 import axios from 'axios';
 
@@ -23,6 +27,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [draftState, setDraftState] = useState(null); // For restoring draft state
   const [currentView, setCurrentView] = useState('pos'); // Navigation state
+  const [draftOrders, setDraftOrders] = useState([]); // Draft orders list
+  const [showReceipt, setShowReceipt] = useState(false); // Receipt modal state
+  const [currentReceipt, setCurrentReceipt] = useState(null); // Current receipt data
 
   // Invoice Settings State - shared between Settings and OrderPanel
   const [invoiceSettings, setInvoiceSettings] = useState({
@@ -64,6 +71,10 @@ function App() {
       console.log('No saved invoice settings found, using defaults');
     }
 
+    // Load draft orders from localStorage
+    const savedDrafts = JSON.parse(localStorage.getItem('orderDrafts') || '[]');
+    setDraftOrders(savedDrafts);
+
     // Initialize data fetching with proper error handling
     const initializeData = async () => {
       try {
@@ -76,6 +87,11 @@ function App() {
     
     initializeData();
   }, []);
+
+  // Save draft orders to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('orderDrafts', JSON.stringify(draftOrders));
+  }, [draftOrders]);
 
   // Save invoice settings to localStorage whenever they change
   useEffect(() => {
@@ -225,6 +241,25 @@ function App() {
   };
 
   const renderMainContent = () => {
+    if (currentView === 'pos') {
+      return <Pos 
+        products={products}
+        categories={categories}
+        onAddToCart={addToCart}
+        cart={cart}
+        onUpdateItem={updateCartItem}
+        onRemoveItem={removeFromCart}
+        onClearCart={clearCart}
+        invoiceSettings={invoiceSettings}
+        draftOrders={draftOrders}
+        setDraftOrders={setDraftOrders}
+        showReceipt={showReceipt}
+        setShowReceipt={setShowReceipt}
+        currentReceipt={currentReceipt}
+        setCurrentReceipt={setCurrentReceipt}
+      />;
+    }
+    
     if (currentView === 'dashboard') {
       return <Dashboard initialSection="overview" />;
     }
@@ -240,12 +275,24 @@ function App() {
       />;
     }
     
+    if (currentView === 'inventory manage') {
+      return <InventoryManage />;
+    }
+    
     if (currentView === 'store management') {
       return <StoreManagement />;
     }
     
     if (currentView === 'sales management') {
       return <SalesManagement />;
+    }
+    
+    if (currentView === 'reports') {
+      return <Reports />;
+    }
+    
+    if (currentView === 'items') {
+      return <Items />;
     }
     
     if (currentView === 'table management') {
@@ -300,6 +347,8 @@ function App() {
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             onRestoreDraft={handleRestoreDraft}
+            draftOrders={draftOrders}
+            setDraftOrders={setDraftOrders}
           />
           {renderMainContent()}
         </div>

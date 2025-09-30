@@ -1,11 +1,12 @@
-name,category,price,status,description
-Margherita Pizza,Pizza,12.99,Active,Classic pizza with tomato sauce and mozzarella
-Chicken Burger,Burgers,8.50,Active,Grilled chicken breast with lettuce and mayo
-Caesar Salad,Salads,7.25,Active,Fresh romaine lettuce with caesar dressing
-Coca Cola,Beverages,2.50,Active,Refreshing cola drink
-Chocolate Cake,Desserts,5.99,Inactive,Rich chocolate cake with frosting
-Pepperoni Pizza,Pizza,14.99,Active,Pizza with pepperoni and cheese
-Fish & Chips,Main Course,11.75,Active,Battered fish with crispy fries
-Green Tea,Beverages,2.00,Active,Healthy green tea
-Tiramisu,Desserts,6.50,Active,Italian coffee-flavored dessert
+name,category,price,stock,description,sku,status
+Margherita Pizza,Pizza,12.99,50,Classic pizza with tomato sauce and mozzarella,SKU001,active
+Chicken Burger,Burgers,8.50,25,Grilled chicken breast with lettuce and mayo,SKU002,active
+Caesar Salad,Salads,7.25,30,Fresh romaine lettuce with caesar dressing,SKU003,active
+Coca Cola,Beverages,2.50,100,Refreshing cola drink,SKU004,active
+Chocolate Cake,Desserts,5.99,15,Rich chocolate cake with frosting,SKU005,active
+Pepperoni Pizza,Pizza,14.99,40,Pizza with pepperoni and cheese,SKU006,active
+Fish & Chips,Main Course,11.75,20,Battered fish with crispy fries,SKU007,active
+Green Tea,Beverages,2.00,80,Healthy green tea,SKU008,active
+Tiramisu,Desserts,6.50,12,Italian coffee-flavored dessert,SKU009,active
+Vegetable Soup,Soup,4.99,35,Hearty vegetable soup,SKU010,active
 Veggie Wrap,Wraps,6.99,Active,Fresh vegetables wrapped in tortilla

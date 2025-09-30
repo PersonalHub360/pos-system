@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: white;
+  background: DarkKhaki;
   border-bottom: 1px solid #e9ecef;
   gap: 15px;
 }
@@ -31,38 +31,7 @@
   color: #dee2e6;
 }
 
-.header-center {
-  flex: 1;
-  max-width: 400px;
-}
-
-.search-container {
-  position: relative;
-  width: 100%;
-}
-
-.search-input {
-  width: 100%;
-  padding: 8px 16px 8px 35px;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.search-input:focus {
-  border-color: #852FEE;
-}
-
-.search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-  font-size: 14px;
-}
+/* Remove search-related styles since search bar is removed */
 
 .header-right {
   display: flex;
@@ -170,4 +139,67 @@
     width: 36px;
     height: 36px;
   }
+}
+
+/* Modal styles for Table Management */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.table-management-modal {
+  width: 1200px;
+  max-width: 95vw;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.modal-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.modal-body {
+  padding: 0;
 }

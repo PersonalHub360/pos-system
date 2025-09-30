@@ -1,0 +1,3 @@
+name,category,price,stock,description,sku,status
+Test Import Item 1,Rice,15.99,25,Imported test item 1,IMP001,active
+Test Import Item 2,Beverages,8.50,40,Imported test item 2,IMP002,active

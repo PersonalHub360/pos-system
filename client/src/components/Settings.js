@@ -31,6 +31,14 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
     logo: ''
   });
 
+  // Load company info from localStorage
+  useEffect(() => {
+    const savedCompanyInfo = localStorage.getItem('companyInfo');
+    if (savedCompanyInfo) {
+      setCompanyInfo(JSON.parse(savedCompanyInfo));
+    }
+  }, []);
+
   // Payment Methods State
   const [paymentMethods, setPaymentMethods] = useState({
     cash: { enabled: true, name: 'Cash Payment' },
@@ -45,6 +53,19 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
     ]
   });
 
+  // Load payment methods from localStorage
+  useEffect(() => {
+    const savedPaymentMethods = localStorage.getItem('paymentMethods');
+    if (savedPaymentMethods) {
+      setPaymentMethods(JSON.parse(savedPaymentMethods));
+    }
+  }, []);
+
+  // Save payment methods to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('paymentMethods', JSON.stringify(paymentMethods));
+  }, [paymentMethods]);
+
   // Language Settings State
   const [languageSettings, setLanguageSettings] = useState({
     currentLanguage: 'English',
@@ -53,6 +74,14 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
     currency: 'USD',
     currencySymbol: '$'
   });
+
+  // Load language settings from localStorage
+  useEffect(() => {
+    const savedLanguageSettings = localStorage.getItem('languageSettings');
+    if (savedLanguageSettings) {
+      setLanguageSettings(JSON.parse(savedLanguageSettings));
+    }
+  }, []);
 
   // Invoice Settings State
   // Removed local state - now using props from App.js
@@ -68,42 +97,63 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
     allowPartialPayments: true
   });
 
-  // Sample staff data
+  // Load order settings from localStorage
   useEffect(() => {
-    const sampleStaff = [
-      {
-        id: 1,
-        name: 'John Doe',
-        email: 'john@bondpos.com',
-        phone: '+1 234 567 8901',
-        role: 'manager',
-        status: 'active',
-        permissions: ['all'],
-        createdDate: '2024-01-15'
-      },
-      {
-        id: 2,
-        name: 'Jane Smith',
-        email: 'jane@bondpos.com',
-        phone: '+1 234 567 8902',
-        role: 'cashier',
-        status: 'active',
-        permissions: ['pos', 'reports'],
-        createdDate: '2024-01-16'
-      },
-      {
-        id: 3,
-        name: 'Mike Johnson',
-        email: 'mike@bondpos.com',
-        phone: '+1 234 567 8903',
-        role: 'waiter',
-        status: 'inactive',
-        permissions: ['pos'],
-        createdDate: '2024-01-17'
-      }
-    ];
-    setStaff(sampleStaff);
+    const savedOrderSettings = localStorage.getItem('orderSettings');
+    if (savedOrderSettings) {
+      setOrderSettings(JSON.parse(savedOrderSettings));
+    }
   }, []);
+
+  // Load staff data from localStorage or use sample data
+  useEffect(() => {
+    const savedStaff = localStorage.getItem('staffData');
+    if (savedStaff) {
+      setStaff(JSON.parse(savedStaff));
+    } else {
+      const sampleStaff = [
+        {
+          id: 1,
+          name: 'John Doe',
+          email: 'john@bondpos.com',
+          phone: '+1 234 567 8901',
+          role: 'manager',
+          status: 'active',
+          permissions: ['all'],
+          createdDate: '2024-01-15'
+        },
+        {
+          id: 2,
+          name: 'Jane Smith',
+          email: 'jane@bondpos.com',
+          phone: '+1 234 567 8902',
+          role: 'cashier',
+          status: 'active',
+          permissions: ['pos', 'reports'],
+          createdDate: '2024-01-16'
+        },
+        {
+          id: 3,
+          name: 'Mike Johnson',
+          email: 'mike@bondpos.com',
+          phone: '+1 234 567 8903',
+          role: 'waiter',
+          status: 'inactive',
+          permissions: ['pos'],
+          createdDate: '2024-01-17'
+        }
+      ];
+      setStaff(sampleStaff);
+      localStorage.setItem('staffData', JSON.stringify(sampleStaff));
+    }
+  }, []);
+
+  // Save staff data to localStorage whenever staff changes
+  useEffect(() => {
+    if (staff.length > 0) {
+      localStorage.setItem('staffData', JSON.stringify(staff));
+    }
+  }, [staff]);
 
   // Modal handlers
   const handleAddStaff = () => {
@@ -216,6 +266,75 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
     }
   };
 
+  // Payment method handlers
+  const handlePaymentMethodToggle = (type, id = null) => {
+    setPaymentMethods(prev => {
+      if (type === 'cash' || type === 'card') {
+        return {
+          ...prev,
+          [type]: { ...prev[type], enabled: !prev[type].enabled }
+        };
+      } else if (type === 'banks') {
+        return {
+          ...prev,
+          banks: prev.banks.map(bank => 
+            bank.id === id ? { ...bank, enabled: !bank.enabled } : bank
+          )
+        };
+      } else if (type === 'qrCodes') {
+        return {
+          ...prev,
+          qrCodes: prev.qrCodes.map(qr => 
+            qr.id === id ? { ...qr, enabled: !qr.enabled } : qr
+          )
+        };
+      }
+      return prev;
+    });
+  };
+
+  const handleCardProcessingFeeChange = (e) => {
+    const fee = parseFloat(e.target.value) || 0;
+    setPaymentMethods(prev => ({
+      ...prev,
+      card: { ...prev.card, processingFee: fee }
+    }));
+  };
+
+  const addBankAccount = () => {
+    const name = prompt('Enter bank name:');
+    const accountNumber = prompt('Enter account number:');
+    if (name && accountNumber) {
+      const newBank = {
+        id: Date.now(),
+        name,
+        accountNumber,
+        enabled: true
+      };
+      setPaymentMethods(prev => ({
+        ...prev,
+        banks: [...prev.banks, newBank]
+      }));
+    }
+  };
+
+  const addQRPayment = () => {
+    const name = prompt('Enter QR payment name:');
+    const qrData = prompt('Enter QR code data:');
+    if (name && qrData) {
+      const newQR = {
+        id: Date.now(),
+        name,
+        qrData,
+        enabled: true
+      };
+      setPaymentMethods(prev => ({
+        ...prev,
+        qrCodes: [...prev.qrCodes, newQR]
+      }));
+    }
+  };
+
   const handleOrderSettingsChange = (e) => {
     const { name, value, type, checked } = e.target;
     setOrderSettings(prev => ({
@@ -255,10 +374,12 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
   };
 
   const saveCompanyInfo = () => {
+    localStorage.setItem('companyInfo', JSON.stringify(companyInfo));
     alert('Company information saved successfully!');
   };
 
   const saveLanguageSettings = () => {
+    localStorage.setItem('languageSettings', JSON.stringify(languageSettings));
     alert('Language settings saved successfully!');
   };
 
@@ -270,6 +391,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
   };
 
   const saveOrderSettings = () => {
+    localStorage.setItem('orderSettings', JSON.stringify(orderSettings));
     alert('Order settings saved successfully!');
   };
 
@@ -485,7 +607,11 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
               <h3>💰 Cash Payment</h3>
               <div className="payment-item">
                 <label className="switch">
-                  <input type="checkbox" checked={paymentMethods.cash.enabled} readOnly />
+                  <input 
+                    type="checkbox" 
+                    checked={paymentMethods.cash.enabled} 
+                    onChange={() => handlePaymentMethodToggle('cash')}
+                  />
                   <span className="slider"></span>
                 </label>
                 <span>Enable Cash Payments</span>
@@ -496,14 +622,24 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
               <h3>💳 Card Payment</h3>
               <div className="payment-item">
                 <label className="switch">
-                  <input type="checkbox" checked={paymentMethods.card.enabled} readOnly />
+                  <input 
+                    type="checkbox" 
+                    checked={paymentMethods.card.enabled} 
+                    onChange={() => handlePaymentMethodToggle('card')}
+                  />
                   <span className="slider"></span>
                 </label>
                 <span>Enable Card Payments</span>
               </div>
               <div className="form-group">
                 <label>Processing Fee (%)</label>
-                <input type="number" value={paymentMethods.card.processingFee} readOnly />
+                <input 
+                  type="number" 
+                  value={paymentMethods.card.processingFee} 
+                  onChange={handleCardProcessingFeeChange}
+                  step="0.1"
+                  min="0"
+                />
               </div>
             </div>
 
@@ -512,7 +648,11 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
               {paymentMethods.banks.map(bank => (
                 <div key={bank.id} className="payment-item">
                   <label className="switch">
-                    <input type="checkbox" checked={bank.enabled} readOnly />
+                    <input 
+                      type="checkbox" 
+                      checked={bank.enabled} 
+                      onChange={() => handlePaymentMethodToggle('banks', bank.id)}
+                    />
                     <span className="slider"></span>
                   </label>
                   <div className="bank-info">
@@ -521,7 +661,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                   </div>
                 </div>
               ))}
-              <button className="btn btn-secondary">+ Add Bank Account</button>
+              <button className="btn btn-secondary" onClick={addBankAccount}>+ Add Bank Account</button>
             </div>
 
             <div className="payment-category">
@@ -529,7 +669,11 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
               {paymentMethods.qrCodes.map(qr => (
                 <div key={qr.id} className="payment-item">
                   <label className="switch">
-                    <input type="checkbox" checked={qr.enabled} readOnly />
+                    <input 
+                      type="checkbox" 
+                      checked={qr.enabled} 
+                      onChange={() => handlePaymentMethodToggle('qrCodes', qr.id)}
+                    />
                     <span className="slider"></span>
                   </label>
                   <div className="qr-info">
@@ -538,7 +682,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                   </div>
                 </div>
               ))}
-              <button className="btn btn-secondary">+ Add QR Payment</button>
+              <button className="btn btn-secondary" onClick={addQRPayment}>+ Add QR Payment</button>
             </div>
           </div>
         </div>

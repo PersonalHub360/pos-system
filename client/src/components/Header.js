@@ -3,23 +3,25 @@ import { useTheme } from '../contexts/ThemeContext';
 import PrinterSettings from './PrinterSettings';
 import DraftList from './DraftList';
 import UserProfile from './UserProfile';
+import TableManagement from './TableManagement';
 import './Header.css';
 
-const Header = ({ searchTerm, setSearchTerm, onRestoreDraft }) => {
-  const { theme, toggleTheme, isDarkMode } = useTheme();
+const Header = ({ onNewOrder, onRestoreDraft, draftOrders, setDraftOrders }) => {
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const [showPrinterSettings, setShowPrinterSettings] = useState(false);
   const [showDraftList, setShowDraftList] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showTableManagement, setShowTableManagement] = useState(false);
 
   const handleNewOrder = () => {
-    // Clear current order and start fresh
-    if (window.confirm('Start a new order? This will clear the current cart.')) {
-      window.location.reload(); // Simple way to reset everything
+    if (onNewOrder) {
+      onNewOrder();
     }
   };
 
   const handleQRMenuOrders = () => {
-    alert('QR Menu Orders feature coming soon!\n\nThis will show orders placed via QR code menu scanning.');
+    // QR Menu Orders functionality
+    console.log('QR Menu Orders clicked');
   };
 
   const handleDraftList = () => {
@@ -27,14 +29,11 @@ const Header = ({ searchTerm, setSearchTerm, onRestoreDraft }) => {
   };
 
   const handleTableOrder = () => {
-    // Table Order Management functionality removed
+    setShowTableManagement(true);
   };
 
   const handleDarkModeToggle = () => {
-    toggleTheme();
-    // Show confirmation message with current theme
-    const newTheme = isDarkMode ? 'light' : 'dark';
-    alert(`${newTheme === 'dark' ? 'Dark' : 'Light'} mode enabled!\n\nTheme switched successfully.`);
+    toggleDarkMode();
   };
 
   const handleUserProfile = () => {
@@ -51,19 +50,6 @@ const Header = ({ searchTerm, setSearchTerm, onRestoreDraft }) => {
         </div>
       </div>
       
-      <div className="header-center">
-        <div className="search-container">
-          <input
-            type="text"
-            placeholder="Search in products"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-          <span className="search-icon">🔍</span>
-        </div>
-      </div>
-      
       <div className="header-right">
         <button className="header-btn primary" onClick={handleNewOrder}>
           <span>+</span>
@@ -75,7 +61,7 @@ const Header = ({ searchTerm, setSearchTerm, onRestoreDraft }) => {
         </button>
         <button className="header-btn secondary" onClick={handleDraftList}>
           <span>📄</span>
-          Draft List
+          Draft List ({draftOrders.length})
         </button>
         <button className="header-btn secondary" onClick={handleTableOrder}>
           <span>🍽️</span>
@@ -105,12 +91,29 @@ const Header = ({ searchTerm, setSearchTerm, onRestoreDraft }) => {
         isOpen={showDraftList} 
         onClose={() => setShowDraftList(false)}
         onRestoreDraft={onRestoreDraft}
+        draftOrders={draftOrders}
+        setDraftOrders={setDraftOrders}
       />
       
       <UserProfile 
         isOpen={showUserProfile} 
         onClose={() => setShowUserProfile(false)}
       />
+      
+      {/* Table Management Modal */}
+      {showTableManagement && (
+        <div className="modal-overlay" onClick={() => setShowTableManagement(false)}>
+          <div className="modal-content table-management-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Table Management</h2>
+              <button className="close-btn" onClick={() => setShowTableManagement(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <TableManagement />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

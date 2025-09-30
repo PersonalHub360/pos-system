@@ -265,7 +265,7 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
         </div>
         <div className="summary-row total">
           <span>Total :</span>
-          <span>{total.toFixed(0)}$</span>
+          <span data-amount={total.toFixed(2)}>{total.toFixed(0)}$</span>
         </div>
       </div>
 

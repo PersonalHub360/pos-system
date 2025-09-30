@@ -36,6 +36,13 @@ const ItemManagement = ({
   const [photoPreview, setPhotoPreview] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Add Stock state variables
+  const [selectedItem, setSelectedItem] = useState('');
+  const [stockQuantity, setStockQuantity] = useState('');
+  const [stockType, setStockType] = useState('add'); // 'add' or 'set'
+  const [reason, setReason] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
   // Dropdown functions
   const toggleDropdown = (itemId) => {
     setDropdownOpen(dropdownOpen === itemId ? null : itemId);
@@ -138,20 +145,44 @@ const ItemManagement = ({
     }
   };
 
-  const handleAddItem = (e) => {
+  const handleAddItem = async (e) => {
     e.preventDefault();
-    if (newItem.name && newItem.price) {
-      const newProduct = {
-        id: Math.max(...products.map(p => p.id), 0) + 1,
+    if (!newItem.name || !newItem.price) {
+      alert('Please fill in all required fields (name and price)');
+      return;
+    }
+
+    try {
+      const productData = {
         name: newItem.name,
         price: parseFloat(newItem.price),
-        category_name: newItem.category,
-        image_url: photoPreview || '/api/placeholder/60/60'
+        category: newItem.category,
+        image: photoPreview || null,
+        stock: 0,
+        description: '',
+        sku: '',
+        status: 'active'
       };
+
+      const response = await fetch('http://localhost:5000/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add item');
+      }
+
+      const newProduct = await response.json();
       
       // Add to products state in App component
       setProducts([...products, newProduct]);
       
+      // Reset form
       setNewItem({
         name: '',
         category: categories[0] || '',
@@ -160,17 +191,57 @@ const ItemManagement = ({
       });
       setPhotoPreview(null);
       
+      alert('Item added successfully!');
+      
       // Navigate to POS dashboard after successful item addition
       if (onNavigate) {
         onNavigate('pos');
       }
+    } catch (error) {
+      console.error('Error adding item:', error);
+      alert('Error adding item: ' + error.message);
     }
   };
 
-  const handleAddCategory = () => {
-    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
-      setCategories([...categories, newCategory.trim()]);
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) {
+      alert('Please enter a category name');
+      return;
+    }
+
+    // Check if category already exists locally
+    if (categories.some(cat => cat.name && cat.name.toLowerCase() === newCategory.trim().toLowerCase())) {
+      alert('Category already exists');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:5000/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newCategory.trim()
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create category');
+      }
+
+      const newCategoryData = await response.json();
+      
+      // Update the categories state
+      setCategories(prevCategories => [...prevCategories, newCategoryData]);
       setNewCategory('');
+      
+      alert('Category added successfully!');
+      
+    } catch (error) {
+      console.error('Error adding category:', error);
+      alert('Error adding category: ' + error.message);
     }
   };
 
@@ -575,6 +646,177 @@ const ItemManagement = ({
     </div>
   );
 
+  const renderAddStock = () => {
+    const handleStockUpdate = async (e) => {
+      e.preventDefault();
+      
+      if (!selectedItem || !stockQuantity) {
+        alert('Please select an item and enter a stock quantity');
+        return;
+      }
+
+      setIsLoading(true);
+      
+      try {
+        const selectedProduct = products.find(p => p.id === parseInt(selectedItem));
+        if (!selectedProduct) {
+          alert('Selected item not found');
+          return;
+        }
+
+        const currentStock = selectedProduct.stock || 0;
+        const quantity = parseInt(stockQuantity);
+        let newStock;
+
+        if (stockType === 'add') {
+          newStock = currentStock + quantity;
+        } else {
+          newStock = quantity;
+        }
+
+        // Update the product stock via API
+        const response = await fetch(`http://localhost:5000/api/products/${selectedItem}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...selectedProduct,
+            stock: newStock
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update stock');
+        }
+
+        const updatedProduct = await response.json();
+        
+        // Update the products state
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
+            product.id === parseInt(selectedItem) 
+              ? { ...product, stock: newStock }
+              : product
+          )
+        );
+
+        // Reset form
+        setSelectedItem('');
+        setStockQuantity('');
+        setReason('');
+        
+        alert(`Stock updated successfully! New stock: ${newStock}`);
+        
+      } catch (error) {
+        console.error('Error updating stock:', error);
+        alert('Failed to update stock. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    return (
+      <div className="add-stock-section">
+        <div className="section-header">
+          <h3>Add Stock</h3>
+          <p>Update inventory levels for existing items</p>
+        </div>
+        
+        <form onSubmit={handleStockUpdate} className="add-stock-form">
+          <div className="form-group">
+            <label htmlFor="item-select">Select Item</label>
+            <select
+              id="item-select"
+              value={selectedItem}
+              onChange={(e) => setSelectedItem(e.target.value)}
+              className="form-select"
+              required
+            >
+              <option value="">Choose an item...</option>
+              {products.map(product => (
+                <option key={product.id} value={product.id}>
+                  {product.name} (Current Stock: {product.stock || 0})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="stock-type">Stock Update Type</label>
+            <select
+              id="stock-type"
+              value={stockType}
+              onChange={(e) => setStockType(e.target.value)}
+              className="form-select"
+            >
+              <option value="add">Add to Current Stock</option>
+              <option value="set">Set New Stock Level</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="stock-quantity">
+              {stockType === 'add' ? 'Quantity to Add' : 'New Stock Level'}
+            </label>
+            <input
+              type="number"
+              id="stock-quantity"
+              value={stockQuantity}
+              onChange={(e) => setStockQuantity(e.target.value)}
+              className="form-input"
+              min="0"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="reason">Reason (Optional)</label>
+            <textarea
+              id="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              className="form-textarea"
+              placeholder="Enter reason for stock update..."
+              rows="3"
+            />
+          </div>
+
+          <div className="form-actions">
+            <button 
+              type="submit" 
+              className="submit-btn"
+              disabled={isLoading}
+            >
+              {isLoading ? '⏳ Updating...' : '📦 Update Stock'}
+            </button>
+          </div>
+        </form>
+
+        {selectedItem && (
+          <div className="stock-preview">
+            <h4>Stock Update Preview</h4>
+            {(() => {
+              const selectedProduct = products.find(p => p.id === parseInt(selectedItem));
+              const currentStock = selectedProduct?.stock || 0;
+              const quantity = parseInt(stockQuantity) || 0;
+              const newStock = stockType === 'add' ? currentStock + quantity : quantity;
+              
+              return (
+                <div className="preview-details">
+                  <p><strong>Item:</strong> {selectedProduct?.name}</p>
+                  <p><strong>Current Stock:</strong> {currentStock}</p>
+                  <p><strong>New Stock:</strong> {newStock}</p>
+                  <p><strong>Change:</strong> {stockType === 'add' ? `+${quantity}` : `Set to ${quantity}`}</p>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="item-management">
       <div className="item-management-header">
@@ -604,6 +846,12 @@ const ItemManagement = ({
           >
             📤 Import/Export
           </button>
+          <button 
+            className={`nav-btn ${activeSection === 'add-stock' ? 'active' : ''}`}
+            onClick={() => setActiveSection('add-stock')}
+          >
+            📦 Add Stock
+          </button>
         </div>
       </div>
       
@@ -612,6 +860,7 @@ const ItemManagement = ({
         {activeSection === 'add' && renderAddItem()}
         {activeSection === 'add-category' && renderAddCategory()}
         {activeSection === 'import-export' && renderImportExport()}
+        {activeSection === 'add-stock' && renderAddStock()}
       </div>
     </div>
   );

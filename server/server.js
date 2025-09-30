@@ -25,13 +25,18 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-  // Products table
-  db.run(`CREATE TABLE IF NOT EXISTS products (
+  // Drop and recreate products table to ensure correct schema
+  db.run(`DROP TABLE IF EXISTS products`);
+  db.run(`CREATE TABLE products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     category_id INTEGER,
     image_url TEXT,
+    stock INTEGER DEFAULT 0,
+    description TEXT,
+    sku TEXT,
+    status TEXT DEFAULT 'active',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories (id)
   )`);
@@ -68,20 +73,20 @@ db.serialize(() => {
     (4, 'Soup'),
     (5, 'Pizza')`);
 
-  // Insert sample products
-  db.run(`INSERT OR IGNORE INTO products (id, name, price, category_id, image_url) VALUES 
-    (1, 'Shrimp Basil Salad', 10.00, 3, '/images/shrimp-basil-salad.jpg'),
-    (2, 'Onion Rings', 10.00, 2, '/images/onion-rings.jpg'),
-    (3, 'Smoked Bacon', 10.00, 4, '/images/smoked-bacon.jpg'),
-    (4, 'Fresh Tomatoes', 10.00, 3, '/images/fresh-tomatoes.jpg'),
-    (5, 'Chicken Burger', 10.00, 4, '/images/chicken-burger.jpg'),
-    (6, 'Red Onion Rings', 10.00, 2, '/images/red-onion-rings.jpg'),
-    (7, 'Beef Burger', 10.00, 4, '/images/beef-burger.jpg'),
-    (8, 'Grilled Burger', 10.00, 4, '/images/grilled-burger.jpg'),
-    (9, 'Chicken Burger Deluxe', 10.00, 4, '/images/chicken-burger-deluxe.jpg'),
-    (10, 'Fresh Basil Salad', 10.00, 3, '/images/fresh-basil-salad.jpg'),
-    (11, 'Vegetable Pizza', 10.00, 5, '/images/vegetable-pizza.jpg'),
-    (12, 'Fish & Chips', 10.00, 4, '/images/fish-chips.jpg')`);
+  // Insert sample products with stock column
+  db.run(`INSERT OR IGNORE INTO products (id, name, price, category_id, image_url, stock) VALUES 
+    (1, 'Shrimp Basil Salad', 10.00, 3, '/images/shrimp-basil-salad.jpg', 50),
+    (2, 'Onion Rings', 10.00, 2, '/images/onion-rings.jpg', 30),
+    (3, 'Smoked Bacon', 10.00, 4, '/images/smoked-bacon.jpg', 25),
+    (4, 'Fresh Tomatoes', 10.00, 3, '/images/fresh-tomatoes.jpg', 40),
+    (5, 'Chicken Burger', 10.00, 4, '/images/chicken-burger.jpg', 35),
+    (6, 'Red Onion Rings', 10.00, 2, '/images/red-onion-rings.jpg', 20),
+    (7, 'Beef Burger', 10.00, 4, '/images/beef-burger.jpg', 30),
+    (8, 'Grilled Burger', 10.00, 4, '/images/grilled-burger.jpg', 25),
+    (9, 'Chicken Burger Deluxe', 10.00, 4, '/images/chicken-burger-deluxe.jpg', 20),
+    (10, 'Fresh Basil Salad', 10.00, 3, '/images/fresh-basil-salad.jpg', 45),
+    (11, 'Vegetable Pizza', 10.00, 5, '/images/vegetable-pizza.jpg', 15),
+    (12, 'Fish & Chips', 10.00, 4, '/images/fish-chips.jpg', 30)`);
 });
 
 // API Routes
@@ -97,19 +102,75 @@ app.get('/api/categories', (req, res) => {
   });
 });
 
+// Create new category
+app.post('/api/categories', (req, res) => {
+  console.log('Received category creation request:', JSON.stringify(req.body, null, 2));
+  
+  const { name } = req.body;
+  
+  // Validate required fields
+  if (!name || !name.trim()) {
+    console.error('Validation error: Category name is required');
+    return res.status(400).json({ error: 'Category name is required' });
+  }
+
+  const categoryName = name.trim();
+
+  // Check if category already exists
+  db.get('SELECT id FROM categories WHERE name = ?', [categoryName], (err, existingCategory) => {
+    if (err) {
+      console.error('Error checking existing category:', err);
+      return res.status(500).json({ error: 'Failed to check existing category: ' + err.message });
+    }
+
+    if (existingCategory) {
+      return res.status(409).json({ error: 'Category already exists' });
+    }
+
+    // Create new category
+    db.run('INSERT INTO categories (name) VALUES (?)', [categoryName], function(err) {
+      if (err) {
+        console.error('Error creating category:', err);
+        return res.status(500).json({ error: 'Failed to create category: ' + err.message });
+      }
+      
+      console.log('Category created with ID:', this.lastID);
+      
+      // Return the created category
+      const newCategory = {
+        id: this.lastID,
+        name: categoryName
+      };
+      
+      res.status(201).json(newCategory);
+    });
+  });
+});
+
 // Get all products
 app.get('/api/products', (req, res) => {
-  const { category } = req.query;
+  const { category, search } = req.query;
   let query = `
     SELECT p.*, c.name as category_name 
     FROM products p 
     LEFT JOIN categories c ON p.category_id = c.id
   `;
   let params = [];
+  let conditions = [];
 
   if (category && category !== 'all') {
-    query += ' WHERE c.name = ?';
+    conditions.push('c.name = ?');
     params.push(category);
+  }
+
+  if (search && search.trim()) {
+    conditions.push('(p.name LIKE ? OR p.description LIKE ? OR c.name LIKE ?)');
+    const searchTerm = `%${search.trim()}%`;
+    params.push(searchTerm, searchTerm, searchTerm);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
   }
 
   query += ' ORDER BY p.name';
@@ -136,6 +197,182 @@ app.get('/api/products/:id', (req, res) => {
       return;
     }
     res.json(row);
+  });
+});
+
+// Create new product
+app.post('/api/products', (req, res) => {
+  console.log('Received product creation request:', JSON.stringify(req.body, null, 2));
+  
+  const { name, price, category, description, sku, status, image, stock } = req.body;
+  
+  // Validate required fields
+  if (!name || !price) {
+    console.error('Validation error: Name and price are required');
+    return res.status(400).json({ error: 'Name and price are required' });
+  }
+
+  // Find category ID by name
+  db.get('SELECT id FROM categories WHERE name = ?', [category], (err, categoryRow) => {
+    if (err) {
+      console.error('Error finding category:', err);
+      return res.status(500).json({ error: 'Failed to find category: ' + err.message });
+    }
+
+    let categoryId = categoryRow ? categoryRow.id : null;
+    
+    // If category doesn't exist, create it
+    if (!categoryId && category) {
+      db.run('INSERT INTO categories (name) VALUES (?)', [category], function(err) {
+        if (err) {
+          console.error('Error creating category:', err);
+          return res.status(500).json({ error: 'Failed to create category: ' + err.message });
+        }
+        categoryId = this.lastID;
+        insertProduct();
+      });
+    } else {
+      insertProduct();
+    }
+
+    function insertProduct() {
+      const productQuery = `INSERT INTO products (name, price, category_id, image_url, stock, description, sku, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+      
+      db.run(productQuery, [
+        name, 
+        parseFloat(price), 
+        categoryId, 
+        image || null,
+        parseInt(stock) || 0,
+        description || null,
+        sku || null,
+        status || 'active'
+      ], function(err) {
+        if (err) {
+          console.error('Error creating product:', err);
+          return res.status(500).json({ error: 'Failed to create product: ' + err.message });
+        }
+        
+        console.log('Product created with ID:', this.lastID);
+        
+        // Return the created product
+        db.get('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?', 
+          [this.lastID], (err, row) => {
+          if (err) {
+            console.error('Error fetching created product:', err);
+            return res.status(500).json({ error: 'Product created but failed to fetch: ' + err.message });
+          }
+          
+          res.status(201).json(row);
+        });
+      });
+    }
+  });
+});
+
+// Update product
+app.put('/api/products/:id', (req, res) => {
+  console.log('Received product update request for ID:', req.params.id);
+  console.log('Update data:', JSON.stringify(req.body, null, 2));
+  
+  const productId = req.params.id;
+  const { name, price, category, description, sku, status, image_url, stock } = req.body;
+  
+  // Validate required fields
+  if (!name || !price) {
+    console.error('Validation error: Name and price are required');
+    return res.status(400).json({ error: 'Name and price are required' });
+  }
+
+  // Find category ID by name if category is provided
+  if (category) {
+    db.get('SELECT id FROM categories WHERE name = ?', [category], (err, categoryRow) => {
+      if (err) {
+        console.error('Error finding category:', err);
+        return res.status(500).json({ error: 'Failed to find category: ' + err.message });
+      }
+
+      let categoryId = categoryRow ? categoryRow.id : null;
+      
+      // If category doesn't exist, create it
+      if (!categoryId && category) {
+        db.run('INSERT INTO categories (name) VALUES (?)', [category], function(err) {
+          if (err) {
+            console.error('Error creating category:', err);
+            return res.status(500).json({ error: 'Failed to create category: ' + err.message });
+          }
+          categoryId = this.lastID;
+          updateProduct(categoryId);
+        });
+      } else {
+        updateProduct(categoryId);
+      }
+    });
+  } else {
+    updateProduct(null);
+  }
+
+  function updateProduct(categoryId) {
+    const updateQuery = `
+      UPDATE products 
+      SET name = ?, price = ?, category_id = ?, image_url = ?, stock = ?, description = ?, sku = ?, status = ?
+      WHERE id = ?
+    `;
+    
+    db.run(updateQuery, [
+      name, 
+      parseFloat(price), 
+      categoryId, 
+      image_url || null,
+      parseInt(stock) || 0,
+      description || null,
+      sku || null,
+      status || 'active',
+      productId
+    ], function(err) {
+      if (err) {
+        console.error('Error updating product:', err);
+        return res.status(500).json({ error: 'Failed to update product: ' + err.message });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Product not found' });
+      }
+      
+      console.log('Product updated, changes:', this.changes);
+      
+      // Return the updated product
+      db.get('SELECT p.*, c.name as category_name FROM products p LEFT JOIN categories c ON p.category_id = c.id WHERE p.id = ?', 
+        [productId], (err, row) => {
+        if (err) {
+          console.error('Error fetching updated product:', err);
+          return res.status(500).json({ error: 'Product updated but failed to fetch: ' + err.message });
+        }
+        
+        res.json(row);
+      });
+    });
+  }
+});
+
+// Delete product
+app.delete('/api/products/:id', (req, res) => {
+  const productId = req.params.id;
+  
+  console.log('Received delete request for product ID:', productId);
+  
+  db.run('DELETE FROM products WHERE id = ?', [productId], function(err) {
+    if (err) {
+      console.error('Error deleting product:', err);
+      return res.status(500).json({ error: 'Failed to delete product: ' + err.message });
+    }
+    
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    
+    console.log('Product deleted successfully, changes:', this.changes);
+    res.json({ message: 'Product deleted successfully' });
   });
 });
 

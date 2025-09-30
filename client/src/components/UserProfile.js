@@ -7,11 +7,11 @@ const UserProfile = ({ isOpen, onClose }) => {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [profileData, setProfileData] = useState({
-    name: 'Nahid Zaman',
-    role: 'Product Designer',
-    email: 'nahid.zaman@restrobit.com',
+    name: 'James Bond',
+    role: 'Owner',
+    email: 'james.bond@restrobit.com',
     phone: '+1 (555) 123-4567',
-    department: 'Design Team',
+    department: 'Management',
     joinDate: '2023-01-15',
     avatar: null
   });
