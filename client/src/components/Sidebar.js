@@ -5,6 +5,7 @@ const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   
   const menuItems = [
+    { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6' },
     { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981' },
     { icon: '📦', label: 'Items', active: currentView === 'items', color: '#F59E0B' },
     { icon: '📋', label: 'Inventory Manage', active: currentView === 'inventory manage', color: '#EF4444' },

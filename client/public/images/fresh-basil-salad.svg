@@ -1,0 +1,13 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="basilGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#16a34a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#15803d;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#basilGrad)" rx="20"/>
+  <circle cx="100" cy="80" r="40" fill="#ffffff" opacity="0.9"/>
+  <text x="100" y="85" text-anchor="middle" fill="#16a34a" font-family="Arial, sans-serif" font-size="18" font-weight="bold">🌿🥗</text>
+  <text x="100" y="140" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Fresh Basil</text>
+  <text x="100" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Salad</text>
+</svg>

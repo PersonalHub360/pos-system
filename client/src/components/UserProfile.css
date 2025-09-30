@@ -27,7 +27,7 @@
 .user-profile-modal {
   background: var(--gradient-modal);
   border-radius: 20px;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 25px 50px rgba(42, 8, 105, 0.3);
   width: 90%;
   max-width: 500px;
   max-height: 90vh;

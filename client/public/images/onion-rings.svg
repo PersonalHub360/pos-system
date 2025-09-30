@@ -1,0 +1,13 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="onionGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d97706;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" fill="url(#onionGrad)" rx="20"/>
+  <circle cx="100" cy="80" r="40" fill="#ffffff" opacity="0.9"/>
+  <text x="100" y="85" text-anchor="middle" fill="#d97706" font-family="Arial, sans-serif" font-size="20" font-weight="bold">🧅</text>
+  <text x="100" y="140" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Onion</text>
+  <text x="100" y="160" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">Rings</text>
+</svg>

@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './TableManagement.css';
 
 const TableManagement = () => {
   // State management
   const [activeSection, setActiveSection] = useState('overview');
   const [tables, setTables] = useState([]);
+  const [reservations, setReservations] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState('');
+  const [modalType, setModalType] = useState(''); // 'add', 'edit', 'view', 'delete', 'reserve'
   const [selectedTable, setSelectedTable] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Form data states
   const [formData, setFormData] = useState({
     tableNumber: '',
     capacity: '',
@@ -15,53 +20,103 @@ const TableManagement = () => {
     status: 'available',
     description: ''
   });
+  
+  const [reservationForm, setReservationForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    customerEmail: '',
+    partySize: '',
+    reservationDate: '',
+    reservationTime: '',
+    duration: '120',
+    specialRequests: ''
+  });
 
-  // Sample data for demonstration
-  useEffect(() => {
-    const sampleTables = [
-      {
-        id: 1,
-        tableNumber: 'T001',
-        capacity: 4,
-        location: 'Main Hall',
-        status: 'available',
-        description: 'Window side table',
-        createdDate: '2024-01-15',
-        lastUpdated: '2024-01-15'
-      },
-      {
-        id: 2,
-        tableNumber: 'T002',
-        capacity: 6,
-        location: 'Main Hall',
-        status: 'occupied',
-        description: 'Center table',
-        createdDate: '2024-01-15',
-        lastUpdated: '2024-01-20'
-      },
-      {
-        id: 3,
-        tableNumber: 'T003',
-        capacity: 2,
-        location: 'Terrace',
-        status: 'reserved',
-        description: 'Outdoor seating',
-        createdDate: '2024-01-16',
-        lastUpdated: '2024-01-18'
-      },
-      {
-        id: 4,
-        tableNumber: 'T004',
-        capacity: 8,
-        location: 'Private Room',
-        status: 'maintenance',
-        description: 'VIP dining area',
-        createdDate: '2024-01-17',
-        lastUpdated: '2024-01-19'
-      }
-    ];
-    setTables(sampleTables);
+  // Filter and search states
+  const [filters, setFilters] = useState({
+    status: 'all',
+    section: 'all',
+    search: ''
+  });
+
+  // API functions
+  const fetchTables = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/tables');
+      if (!response.ok) throw new Error('Failed to fetch tables');
+      const data = await response.json();
+      setTables(data.tables || []);
+    } catch (err) {
+      setError('Failed to load tables: ' + err.message);
+      console.error('Error fetching tables:', err);
+      // Fallback to sample data
+      const sampleTables = [
+        {
+          id: 1,
+          tableNumber: 'T001',
+          capacity: 4,
+          location: 'Main Hall',
+          status: 'available',
+          description: 'Window side table',
+          createdDate: '2024-01-15',
+          lastUpdated: '2024-01-20'
+        },
+        {
+          id: 2,
+          tableNumber: 'T002',
+          capacity: 2,
+          location: 'Terrace',
+          status: 'occupied',
+          description: 'Outdoor seating',
+          createdDate: '2024-01-16',
+          lastUpdated: '2024-01-20'
+        },
+        {
+          id: 3,
+          tableNumber: 'T003',
+          capacity: 6,
+          location: 'Main Hall',
+          status: 'reserved',
+          description: 'Large family table',
+          createdDate: '2024-01-16',
+          lastUpdated: '2024-01-18'
+        },
+        {
+          id: 4,
+          tableNumber: 'T004',
+          capacity: 8,
+          location: 'Private Room',
+          status: 'maintenance',
+          description: 'VIP dining area',
+          createdDate: '2024-01-17',
+          lastUpdated: '2024-01-19'
+        }
+      ];
+      setTables(sampleTables);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  const fetchReservations = useCallback(async () => {
+    try {
+      const response = await fetch('/api/reservations');
+      if (!response.ok) throw new Error('Failed to fetch reservations');
+      const data = await response.json();
+      setReservations(data.reservations || []);
+    } catch (err) {
+      console.error('Error fetching reservations:', err);
+    }
+  }, []);
+
+  // Load initial data
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([fetchTables(), fetchReservations()]);
+    };
+    loadData();
+  }, [fetchTables, fetchReservations]);
 
   // Modal handlers
   const handleAddTable = () => {
@@ -72,6 +127,22 @@ const TableManagement = () => {
       location: '',
       status: 'available',
       description: ''
+    });
+    setShowModal(true);
+  };
+
+  const handleReserveTable = (table) => {
+    setModalType('reserve');
+    setSelectedTable(table);
+    setReservationForm({
+      customerName: '',
+      customerPhone: '',
+      customerEmail: '',
+      partySize: '',
+      reservationDate: '',
+      reservationTime: '',
+      duration: '120',
+      specialRequests: ''
     });
     setShowModal(true);
   };
@@ -133,55 +204,193 @@ const TableManagement = () => {
     }));
   };
 
-  const handleSubmitTable = () => {
+  const handleReservationInputChange = (e) => {
+    const { name, value } = e.target;
+    setReservationForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmitTable = async () => {
     // Validation
     if (!formData.tableNumber || !formData.capacity || !formData.location) {
       alert('Please fill in all required fields');
       return;
     }
 
-    if (modalType === 'add') {
-      const newTable = {
-        id: Date.now(),
-        tableNumber: formData.tableNumber,
-        capacity: parseInt(formData.capacity),
-        location: formData.location,
-        status: formData.status,
-        description: formData.description,
-        createdDate: new Date().toISOString().split('T')[0],
-        lastUpdated: new Date().toISOString().split('T')[0]
-      };
-      setTables(prev => [...prev, newTable]);
-    } else if (modalType === 'edit') {
-      setTables(prev => prev.map(table => 
-        table.id === selectedTable.id 
-          ? {
-              ...table,
-              tableNumber: formData.tableNumber,
-              capacity: parseInt(formData.capacity),
-              location: formData.location,
-              status: formData.status,
-              description: formData.description,
-              lastUpdated: new Date().toISOString().split('T')[0]
-            }
-          : table
-      ));
+    try {
+      setLoading(true);
+      
+      if (modalType === 'add') {
+        const response = await fetch('/api/tables', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tableNumber: formData.tableNumber,
+            capacity: parseInt(formData.capacity),
+            location: formData.location,
+            status: formData.status,
+            description: formData.description
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed to add table');
+        
+        // Fallback for demo
+        const newTable = {
+          id: Date.now(),
+          tableNumber: formData.tableNumber,
+          capacity: parseInt(formData.capacity),
+          location: formData.location,
+          status: formData.status,
+          description: formData.description,
+          createdDate: new Date().toISOString().split('T')[0],
+          lastUpdated: new Date().toISOString().split('T')[0]
+        };
+        setTables(prev => [...prev, newTable]);
+        
+      } else if (modalType === 'edit') {
+        const response = await fetch(`/api/tables/${selectedTable.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tableNumber: formData.tableNumber,
+            capacity: parseInt(formData.capacity),
+            location: formData.location,
+            status: formData.status,
+            description: formData.description
+          })
+        });
+        
+        if (!response.ok) throw new Error('Failed to update table');
+        
+        // Fallback for demo
+        setTables(prev => prev.map(table => 
+          table.id === selectedTable.id 
+            ? {
+                ...table,
+                tableNumber: formData.tableNumber,
+                capacity: parseInt(formData.capacity),
+                location: formData.location,
+                status: formData.status,
+                description: formData.description,
+                lastUpdated: new Date().toISOString().split('T')[0]
+              }
+            : table
+        ));
+      }
+      
+      setShowModal(false);
+      setSelectedTable(null);
+      
+    } catch (err) {
+      setError('Failed to save table: ' + err.message);
+    } finally {
+      setLoading(false);
     }
-    
-    setShowModal(false);
-    setSelectedTable(null);
   };
 
-  const confirmDelete = () => {
-    setTables(prev => prev.filter(table => table.id !== selectedTable.id));
-    setShowModal(false);
-    setSelectedTable(null);
+  const handleSubmitReservation = async () => {
+    // Validation
+    if (!reservationForm.customerName || !reservationForm.customerPhone || 
+        !reservationForm.partySize || !reservationForm.reservationDate || 
+        !reservationForm.reservationTime) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const response = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tableId: selectedTable.id,
+          customerName: reservationForm.customerName,
+          customerPhone: reservationForm.customerPhone,
+          customerEmail: reservationForm.customerEmail,
+          partySize: parseInt(reservationForm.partySize),
+          reservationDate: reservationForm.reservationDate,
+          reservationTime: reservationForm.reservationTime,
+          duration: parseInt(reservationForm.duration),
+          specialRequests: reservationForm.specialRequests
+        })
+      });
+      
+      if (!response.ok) throw new Error('Failed to create reservation');
+      
+      // Update table status to reserved
+      setTables(prev => prev.map(table => 
+        table.id === selectedTable.id 
+          ? { ...table, status: 'reserved', lastUpdated: new Date().toISOString().split('T')[0] }
+          : table
+      ));
+      
+      setShowModal(false);
+      setSelectedTable(null);
+      alert('Reservation created successfully!');
+      
+    } catch (err) {
+      setError('Failed to create reservation: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`/api/tables/${selectedTable.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete table');
+      
+      // Fallback for demo
+      setTables(prev => prev.filter(table => table.id !== selectedTable.id));
+      setShowModal(false);
+      setSelectedTable(null);
+      
+    } catch (err) {
+      setError('Failed to delete table: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closeModal = () => {
     setShowModal(false);
     setSelectedTable(null);
   };
+
+  // Filter tables based on current filters
+  const filteredTables = tables.filter(table => {
+    const matchesStatus = filters.status === 'all' || table.status === filters.status;
+    const matchesSection = filters.section === 'all' || table.location === filters.section;
+    const matchesSearch = filters.search === '' || 
+      table.tableNumber.toLowerCase().includes(filters.search.toLowerCase()) ||
+      table.location.toLowerCase().includes(filters.search.toLowerCase()) ||
+      table.description.toLowerCase().includes(filters.search.toLowerCase());
+    
+    return matchesStatus && matchesSection && matchesSearch;
+  });
 
   // Statistics calculations
   const totalTables = tables.length;
@@ -230,8 +439,25 @@ const TableManagement = () => {
         </button>
       </div>
 
+      {/* Loading and Error States */}
+      {loading && (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Loading tables...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="error-state">
+          <p className="error-message">{error}</p>
+          <button className="btn btn-primary" onClick={() => { setError(''); fetchTables(); }}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Overview Section */}
-      {activeSection === 'overview' && (
+      {activeSection === 'overview' && !loading && (
         <div className="overview-section">
           <div className="stats-grid">
             <div className="stat-card">
@@ -316,6 +542,15 @@ const TableManagement = () => {
                     >
                       🗑️
                     </button>
+                    {table.status === 'available' && (
+                      <button 
+                        className="btn-action reserve"
+                        onClick={() => handleReserveTable(table)}
+                        title="Reserve"
+                      >
+                        📅
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -325,10 +560,45 @@ const TableManagement = () => {
       )}
 
       {/* Table List Section */}
-      {activeSection === 'list' && (
+      {activeSection === 'list' && !loading && (
         <div className="list-section">
           <div className="list-header">
-            <h3>All Tables ({totalTables})</h3>
+            <h3>All Tables ({filteredTables.length})</h3>
+            <div className="list-filters">
+              <select
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                className="filter-select"
+              >
+                <option value="all">All Status</option>
+                <option value="available">Available</option>
+                <option value="occupied">Occupied</option>
+                <option value="reserved">Reserved</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+              <select
+                name="section"
+                value={filters.section}
+                onChange={handleFilterChange}
+                className="filter-select"
+              >
+                <option value="all">All Sections</option>
+                <option value="Main Hall">Main Hall</option>
+                <option value="Terrace">Terrace</option>
+                <option value="Private Room">Private Room</option>
+                <option value="Bar Area">Bar Area</option>
+                <option value="Garden">Garden</option>
+              </select>
+              <input
+                type="text"
+                name="search"
+                value={filters.search}
+                onChange={handleFilterChange}
+                placeholder="Search tables..."
+                className="search-input"
+              />
+            </div>
           </div>
           <div className="table-list">
             <table>
@@ -344,7 +614,7 @@ const TableManagement = () => {
                 </tr>
               </thead>
               <tbody>
-                {tables.map(table => (
+                {filteredTables.map(table => (
                   <tr key={table.id}>
                     <td><strong>{table.tableNumber}</strong></td>
                     <td>{table.capacity} persons</td>
@@ -386,6 +656,15 @@ const TableManagement = () => {
                         >
                           🗑️
                         </button>
+                        {table.status === 'available' && (
+                          <button 
+                            className="btn-action reserve"
+                            onClick={() => handleReserveTable(table)}
+                            title="Reserve"
+                          >
+                            📅
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -406,6 +685,7 @@ const TableManagement = () => {
                 {modalType === 'edit' && 'Edit Table'}
                 {modalType === 'view' && 'Table Details'}
                 {modalType === 'delete' && 'Delete Table'}
+                {modalType === 'reserve' && 'Reserve Table'}
               </h3>
               <button className="close-btn" onClick={closeModal}>×</button>
             </div>
@@ -419,8 +699,8 @@ const TableManagement = () => {
                     <button className="btn btn-secondary" onClick={closeModal}>
                       Cancel
                     </button>
-                    <button className="btn btn-danger" onClick={confirmDelete}>
-                      Delete Table
+                    <button className="btn btn-danger" onClick={confirmDelete} disabled={loading}>
+                      {loading ? 'Deleting...' : 'Delete Table'}
                     </button>
                   </div>
                 </div>
@@ -465,6 +745,116 @@ const TableManagement = () => {
                       onClick={() => handlePrintTable(selectedTable)}
                     >
                       Print Details
+                    </button>
+                  </div>
+                </div>
+              ) : modalType === 'reserve' ? (
+                <div className="reservation-form">
+                  <div className="form-group">
+                    <label>Table: {selectedTable?.tableNumber}</label>
+                    <p>Capacity: {selectedTable?.capacity} persons | Location: {selectedTable?.location}</p>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Customer Name *</label>
+                      <input
+                        type="text"
+                        name="customerName"
+                        value={reservationForm.customerName}
+                        onChange={handleReservationInputChange}
+                        placeholder="Enter customer name"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Phone Number *</label>
+                      <input
+                        type="tel"
+                        name="customerPhone"
+                        value={reservationForm.customerPhone}
+                        onChange={handleReservationInputChange}
+                        placeholder="Enter phone number"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input
+                      type="email"
+                      name="customerEmail"
+                      value={reservationForm.customerEmail}
+                      onChange={handleReservationInputChange}
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Party Size *</label>
+                      <input
+                        type="number"
+                        name="partySize"
+                        value={reservationForm.partySize}
+                        onChange={handleReservationInputChange}
+                        placeholder="Number of guests"
+                        min="1"
+                        max={selectedTable?.capacity}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Duration (minutes)</label>
+                      <select
+                        name="duration"
+                        value={reservationForm.duration}
+                        onChange={handleReservationInputChange}
+                      >
+                        <option value="60">1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                        <option value="180">3 hours</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Reservation Date *</label>
+                      <input
+                        type="date"
+                        name="reservationDate"
+                        value={reservationForm.reservationDate}
+                        onChange={handleReservationInputChange}
+                        min={new Date().toISOString().split('T')[0]}
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Reservation Time *</label>
+                      <input
+                        type="time"
+                        name="reservationTime"
+                        value={reservationForm.reservationTime}
+                        onChange={handleReservationInputChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Special Requests</label>
+                    <textarea
+                      name="specialRequests"
+                      value={reservationForm.specialRequests}
+                      onChange={handleReservationInputChange}
+                      placeholder="Any special requests or notes"
+                      rows="3"
+                    />
+                  </div>
+                  <div className="modal-actions">
+                    <button className="btn btn-secondary" onClick={closeModal}>
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" onClick={handleSubmitReservation} disabled={loading}>
+                      {loading ? 'Creating...' : 'Create Reservation'}
                     </button>
                   </div>
                 </div>
@@ -536,8 +926,8 @@ const TableManagement = () => {
                     <button className="btn btn-secondary" onClick={closeModal}>
                       Cancel
                     </button>
-                    <button className="btn btn-primary" onClick={handleSubmitTable}>
-                      {modalType === 'add' ? 'Add Table' : 'Update Table'}
+                    <button className="btn btn-primary" onClick={handleSubmitTable} disabled={loading}>
+                      {loading ? 'Saving...' : (modalType === 'add' ? 'Add Table' : 'Update Table')}
                     </button>
                   </div>
                 </div>

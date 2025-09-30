@@ -5,16 +5,33 @@ const sqlite3 = require('sqlite3').verbose();
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
 
+// Import middleware
+const AuditMiddleware = require('./middleware/auditMiddleware');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Database setup
+const db = new sqlite3.Database('./pos_database.db');
+
+// Initialize audit middleware
+const auditMiddleware = new AuditMiddleware(db);
+
+// Initialize backup service and start scheduler
+const BackupService = require('./services/backupService');
+const backupService = new BackupService(db);
+backupService.scheduleBackups();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Database setup
-const db = new sqlite3.Database('./pos_database.db');
+// Add audit logging middleware
+app.use(auditMiddleware.logApiRequest());
+
+// Start scheduled integrity checks
+auditMiddleware.scheduleIntegrityChecks();
 
 // Initialize database tables
 db.serialize(() => {
@@ -75,18 +92,18 @@ db.serialize(() => {
 
   // Insert sample products with stock column
   db.run(`INSERT OR IGNORE INTO products (id, name, price, category_id, image_url, stock) VALUES 
-    (1, 'Shrimp Basil Salad', 10.00, 3, '/images/shrimp-basil-salad.jpg', 50),
-    (2, 'Onion Rings', 10.00, 2, '/images/onion-rings.jpg', 30),
-    (3, 'Smoked Bacon', 10.00, 4, '/images/smoked-bacon.jpg', 25),
-    (4, 'Fresh Tomatoes', 10.00, 3, '/images/fresh-tomatoes.jpg', 40),
-    (5, 'Chicken Burger', 10.00, 4, '/images/chicken-burger.jpg', 35),
-    (6, 'Red Onion Rings', 10.00, 2, '/images/red-onion-rings.jpg', 20),
-    (7, 'Beef Burger', 10.00, 4, '/images/beef-burger.jpg', 30),
-    (8, 'Grilled Burger', 10.00, 4, '/images/grilled-burger.jpg', 25),
-    (9, 'Chicken Burger Deluxe', 10.00, 4, '/images/chicken-burger-deluxe.jpg', 20),
-    (10, 'Fresh Basil Salad', 10.00, 3, '/images/fresh-basil-salad.jpg', 45),
-    (11, 'Vegetable Pizza', 10.00, 5, '/images/vegetable-pizza.jpg', 15),
-    (12, 'Fish & Chips', 10.00, 4, '/images/fish-chips.jpg', 30)`);
+    (1, 'Shrimp Basil Salad', 10.00, 3, '/images/shrimp-basil-salad.svg', 50),
+    (2, 'Onion Rings', 10.00, 2, '/images/onion-rings.svg', 30),
+    (3, 'Smoked Bacon', 10.00, 4, '/images/smoked-bacon.svg', 25),
+    (4, 'Fresh Tomatoes', 10.00, 3, '/images/fresh-tomatoes.svg', 40),
+    (5, 'Chicken Burger', 10.00, 4, '/images/chicken-burger.svg', 35),
+    (6, 'Red Onion Rings', 10.00, 2, '/images/red-onion-rings.svg', 20),
+    (7, 'Beef Burger', 10.00, 4, '/images/beef-burger.svg', 30),
+    (8, 'Grilled Burger', 10.00, 4, '/images/grilled-burger.svg', 25),
+    (9, 'Chicken Burger Deluxe', 10.00, 4, '/images/chicken-burger-deluxe.svg', 20),
+    (10, 'Fresh Basil Salad', 10.00, 3, '/images/fresh-basil-salad.svg', 45),
+    (11, 'Vegetable Pizza', 10.00, 5, '/images/vegetable-pizza.svg', 15),
+    (12, 'Fish & Chips', 10.00, 4, '/images/fish-chips.svg', 30)`);
 });
 
 // API Routes

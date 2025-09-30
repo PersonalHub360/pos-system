@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 
-const Dashboard = ({ initialSection = 'overview' }) => {
+const Dashboard = () => {
   const [metrics, setMetrics] = useState({
     dailySales: 0,
     yesterdaySales: 0,
-    dailyExpenses: 0,
-    yesterdayExpenses: 0,
-    discountAmount: 0,
-    dailyProfit: 0,
-    totalStock: 0,
-    stockCost: 0
+    weeklySales: 0,
+    monthlySales: 0,
+    estimatedExpenses: 0,
+    stockData: []
   });
-
   const [loading, setLoading] = useState(true);
-  const [selectedDateRange, setSelectedDateRange] = useState('today');
-  const [customDateRange, setCustomDateRange] = useState({
-    startDate: '',
-    endDate: ''
-  });
-  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [dateRange, setDateRange] = useState('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [animationTrigger, setAnimationTrigger] = useState(false);
+  const [orders, setOrders] = useState([]);
 
-  // Fetch real dashboard data from API
+  // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
@@ -29,7 +25,7 @@ const Dashboard = ({ initialSection = 'overview' }) => {
       try {
         // Fetch orders data from API
         const ordersResponse = await fetch('http://localhost:5000/api/orders');
-        const orders = await ordersResponse.json();
+        const ordersData = await ordersResponse.json();
         
         // Calculate date ranges
         const today = new Date();
@@ -37,98 +33,78 @@ const Dashboard = ({ initialSection = 'overview' }) => {
         const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         
-        let filteredOrders = orders;
-        
-        // Filter orders based on selected date range
-        switch (selectedDateRange) {
-          case 'today':
-            filteredOrders = orders.filter(order => 
-              new Date(order.created_at).toDateString() === today.toDateString()
-            );
-            break;
-          case 'yesterday':
-            filteredOrders = orders.filter(order => 
-              new Date(order.created_at).toDateString() === yesterday.toDateString()
-            );
-            break;
-          case 'week':
-            filteredOrders = orders.filter(order => 
-              new Date(order.created_at) >= weekStart
-            );
-            break;
-          case 'month':
-            filteredOrders = orders.filter(order => 
-              new Date(order.created_at) >= monthStart
-            );
-            break;
-          case 'custom':
-            if (customDateRange.startDate && customDateRange.endDate) {
-              filteredOrders = orders.filter(order => {
-                const orderDate = new Date(order.created_at);
-                return orderDate >= new Date(customDateRange.startDate) && 
-                       orderDate <= new Date(customDateRange.endDate);
-              });
-            }
-            break;
-          default:
-            filteredOrders = orders;
-        }
-        
-        // Calculate metrics for today and yesterday specifically
-        const todayOrders = orders.filter(order => 
+        // Filter orders based on date ranges
+        const todayOrders = ordersData.filter(order => 
           new Date(order.created_at).toDateString() === today.toDateString()
         );
         
-        const yesterdayOrders = orders.filter(order => 
+        const yesterdayOrders = ordersData.filter(order => 
           new Date(order.created_at).toDateString() === yesterday.toDateString()
         );
         
+        const weekOrders = ordersData.filter(order => 
+          new Date(order.created_at) >= weekStart
+        );
+        
+        const monthOrders = ordersData.filter(order => 
+          new Date(order.created_at) >= monthStart
+        );
+        
+        // Calculate metrics
         const dailySales = todayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
         const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        const dailyDiscount = todayOrders.reduce((sum, order) => sum + parseFloat(order.discount || 0), 0);
+        const weeklySales = weekOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        const monthlySales = monthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+        const estimatedExpenses = dailySales * 0.25; // 25% of sales as expenses
         
-        // Estimate expenses (25% of sales for demo)
-        const dailyExpenses = dailySales * 0.25;
-        const yesterdayExpenses = yesterdaySales * 0.25;
-        const dailyProfit = dailySales - dailyExpenses;
+        // Mock stock data
+        const stockData = [
+          { name: 'Burgers', stock: 45, icon: '🍔' },
+          { name: 'Pizzas', stock: 32, icon: '🍕' },
+          { name: 'Drinks', stock: 18, icon: '🥤' },
+          { name: 'Desserts', stock: 25, icon: '🍰' }
+        ];
         
-        // Mock stock data (in real app, this would come from inventory API)
-        const totalStock = 1250;
-        const stockCost = 45750.50;
-        
-        const calculatedMetrics = {
+        setMetrics({
           dailySales,
           yesterdaySales,
-          dailyExpenses,
-          yesterdayExpenses,
-          discountAmount: dailyDiscount,
-          dailyProfit,
-          totalStock,
-          stockCost
-        };
+          weeklySales,
+          monthlySales,
+          estimatedExpenses,
+          stockData
+        });
         
-        setMetrics(calculatedMetrics);
+        setOrders(ordersData.slice(0, 8)); // Get recent orders
+        
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
-        // Fallback to mock data if API fails
-        const mockData = {
+        // Fallback to mock data
+        setMetrics({
           dailySales: 2450.75,
           yesterdaySales: 2180.50,
-          dailyExpenses: 612.69,
-          yesterdayExpenses: 545.13,
-          discountAmount: 245.00,
-          dailyProfit: 1838.06,
-          totalStock: 1250,
-          stockCost: 45750.50
-        };
-        setMetrics(mockData);
+          weeklySales: 15420.30,
+          monthlySales: 68750.25,
+          estimatedExpenses: 612.69,
+          stockData: [
+            { name: 'Burgers', stock: 45, icon: '🍔' },
+            { name: 'Pizzas', stock: 32, icon: '🍕' },
+            { name: 'Drinks', stock: 18, icon: '🥤' },
+            { name: 'Desserts', stock: 25, icon: '🍰' }
+          ]
+        });
+        
+        setOrders([
+          { id: 1, total: 45.50, status: 'completed', timestamp: new Date().toISOString() },
+          { id: 2, total: 32.75, status: 'pending', timestamp: new Date().toISOString() },
+          { id: 3, total: 67.20, status: 'completed', timestamp: new Date().toISOString() },
+        ]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [selectedDateRange, customDateRange]);
+  }, [dateRange]);
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-US', {
@@ -143,275 +119,322 @@ const Dashboard = ({ initialSection = 'overview' }) => {
   };
 
   const handleDateRangeChange = (range) => {
-    setSelectedDateRange(range);
-    if (range !== 'custom') {
-      setShowCustomDatePicker(false);
-    } else {
-      setShowCustomDatePicker(true);
-    }
+    setDateRange(range);
   };
 
-  const handleCustomDateChange = (field, value) => {
-    setCustomDateRange(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const MetricCard = ({ title, value, icon, trend, trendValue, color = 'primary' }) => (
-    <div className={`metric-card ${color}`}>
+  // Enhanced MetricCard with animations
+  const MetricCard = ({ title, value, icon, trend, trendValue, size = 'medium', delay = 0 }) => (
+    <div 
+      className={`metric-card ${size} animate-card`} 
+      style={{ 
+        animationDelay: `${delay}ms`,
+        '--hover-scale': size === 'large' ? '1.05' : '1.02'
+      }}
+    >
       <div className="metric-header">
-        <div className="metric-icon">{icon}</div>
-        <div className={`metric-trend ${trend}`}>
-          {trend === 'up' ? '📈' : trend === 'down' ? '📉' : '➖'}
-          {trendValue && <span>{trendValue}%</span>}
-        </div>
+        <span className="metric-icon animate-icon">{icon}</span>
+        {trend && (
+          <div className={`metric-trend ${trend} animate-trend`}>
+            <span>{trend === 'up' ? '↗️' : trend === 'down' ? '↘️' : '➡️'}</span>
+            <span>{trendValue}</span>
+          </div>
+        )}
       </div>
       <div className="metric-content">
-        <h3 className="metric-title">{title}</h3>
-        <div className="metric-value">
-          {loading ? (
-            <div className="loading-skeleton"></div>
-          ) : (
-            typeof value === 'number' ? formatCurrency(value) : value
-          )}
+        <h3 className="animate-text">{title}</h3>
+        <div className="metric-value animate-value" data-value={value}>
+          {formatCurrency(value)}
         </div>
       </div>
+      <div className="card-glow"></div>
     </div>
   );
 
+  // Enhanced DateFilterButtons with animations
   const DateFilterButtons = () => (
-    <div className="date-filter-container">
-      <div className="date-filter-buttons">
-        <button 
-          className={`filter-btn ${selectedDateRange === 'today' ? 'active' : ''}`}
-          onClick={() => handleDateRangeChange('today')}
+    <div className="date-filter-buttons">
+      {['today', 'yesterday', 'week', 'month'].map((filter, index) => (
+        <button
+          key={filter}
+          className={`filter-btn ${dateRange === filter ? 'active' : ''} animate-button`}
+          onClick={() => handleDateRangeChange(filter)}
+          style={{ animationDelay: `${index * 100}ms` }}
         >
-          Today
+          <span className="button-text">
+            {filter.charAt(0).toUpperCase() + filter.slice(1)}
+          </span>
+          <div className="button-ripple"></div>
         </button>
-        <button 
-          className={`filter-btn ${selectedDateRange === 'yesterday' ? 'active' : ''}`}
-          onClick={() => handleDateRangeChange('yesterday')}
-        >
-          Yesterday
-        </button>
-        <button 
-          className={`filter-btn ${selectedDateRange === 'week' ? 'active' : ''}`}
-          onClick={() => handleDateRangeChange('week')}
-        >
-          This Week
-        </button>
-        <button 
-          className={`filter-btn ${selectedDateRange === 'month' ? 'active' : ''}`}
-          onClick={() => handleDateRangeChange('month')}
-        >
-          This Month
-        </button>
-        <button 
-          className={`filter-btn ${selectedDateRange === 'custom' ? 'active' : ''}`}
-          onClick={() => handleDateRangeChange('custom')}
-        >
-          Custom Date
-        </button>
-      </div>
-      
-      {showCustomDatePicker && (
-        <div className="custom-date-picker">
-          <input
-            type="date"
-            value={customDateRange.startDate}
-            onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
-            placeholder="Start Date"
-          />
-          <span>to</span>
-          <input
-            type="date"
-            value={customDateRange.endDate}
-            onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
-            placeholder="End Date"
-          />
-        </div>
-      )}
+      ))}
     </div>
   );
 
-  const OverviewSection = () => (
-    <div className="dashboard-section">
-      <div className="section-header">
-        <h2>📊 Dashboard Overview</h2>
-        <p>Key performance indicators and business metrics</p>
+  // Enhanced Header with Stats Preview
+  const EnhancedHeaderWithStatsPreview = () => (
+    <div className="dashboard-header animate-header">
+      <div className="header-particles">
+        <div className="particle particle-1"></div>
+        <div className="particle particle-2"></div>
+        <div className="particle particle-3"></div>
+        <div className="particle particle-4"></div>
+        <div className="particle particle-5"></div>
+        <div className="particle particle-6"></div>
       </div>
       
-      {/* Main Metrics Grid */}
-      <div className="metrics-grid main-metrics">
+      <div className="header-content">
+        <h1 className="animate-title">
+          Dashboard
+        </h1>
+        <p className="header-subtitle animate-subtitle">
+          Real-time business analytics and insights
+        </p>
+      </div>
+      
+      <div className="header-stats-preview">
+        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '200ms' }}>
+          <div className="mini-stat-value pulse-animation">
+            {formatCurrency(metrics.dailySales)}
+          </div>
+          <div className="mini-stat-label">Today's Sales</div>
+        </div>
+        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '400ms' }}>
+          <div className="mini-stat-value pulse-animation">
+            {orders.length}
+          </div>
+          <div className="mini-stat-label">Total Orders</div>
+        </div>
+        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '600ms' }}>
+          <div className="mini-stat-value pulse-animation">
+            {calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}%
+          </div>
+          <div className="mini-stat-label">Growth</div>
+        </div>
+      </div>
+      
+      <div className="date-filter-container">
+        <DateFilterButtons />
+      </div>
+    </div>
+  );
+
+  // Primary Metrics Section with staggered animations
+  const PrimaryMetricsSection = () => (
+    <div className="dashboard-section animate-section" style={{ animationDelay: '200ms' }}>
+      <div className="section-header">
+        <h2 className="animate-section-title">
+          💰 Sales Performance
+        </h2>
+        <p className="animate-section-subtitle">
+          Track your revenue and growth metrics
+        </p>
+      </div>
+      <div className="metrics-grid">
         <MetricCard
-          title="Daily Sales"
+          title="Today's Sales"
           value={metrics.dailySales}
-          icon="💰"
-          trend="up"
-          trendValue={calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}
-          color="success"
+          icon="💵"
+          trend={calculateGrowth(metrics.dailySales, metrics.yesterdaySales) > 0 ? 'up' : 'down'}
+          trendValue={`${calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}%`}
+          size="large"
+          delay={100}
         />
-        
         <MetricCard
           title="Yesterday's Sales"
           value={metrics.yesterdaySales}
-          icon="📅"
+          icon="📊"
           trend="neutral"
-          color="info"
+          trendValue="Previous day"
+          delay={200}
         />
-        
         <MetricCard
-          title="Daily Expense"
-          value={metrics.dailyExpenses}
-          icon="💸"
-          trend="up"
-          trendValue={calculateGrowth(metrics.dailyExpenses, metrics.yesterdayExpenses)}
-          color="danger"
-        />
-        
-        <MetricCard
-          title="Yesterday's Expense"
-          value={metrics.yesterdayExpenses}
-          icon="📋"
-          trend="neutral"
-          color="warning"
-        />
-        
-        <MetricCard
-          title="Discount Amount"
-          value={metrics.discountAmount}
-          icon="🏷️"
-          trend={metrics.discountAmount > 0 ? "up" : "neutral"}
-          trendValue={metrics.discountAmount > 0 ? "Active" : "None"}
-          color="warning"
-        />
-        
-        <MetricCard
-          title="Daily Profit"
-          value={metrics.dailyProfit}
+          title="Weekly Sales"
+          value={metrics.weeklySales}
           icon="📈"
           trend="up"
-          trendValue={calculateGrowth(metrics.dailyProfit, metrics.yesterdaySales - metrics.yesterdayExpenses)}
-          color="primary"
+          trendValue="+12.5%"
+          delay={300}
         />
-      </div>
-
-      {/* Stock Information Section */}
-      <div className="stock-section">
-        <div className="section-header">
-          <h2>📦 Stock Information</h2>
-          <p>Current inventory status and valuation</p>
-        </div>
-        
-        <div className="metrics-grid stock-metrics">
-          <MetricCard
-            title="Total Stock"
-            value={`${metrics.totalStock} Items`}
-            icon="📦"
-            trend="neutral"
-            color="info"
-          />
-          
-          <MetricCard
-            title="Stock Cost"
-            value={metrics.stockCost}
-            icon="💎"
-            trend="up"
-            trendValue="2.5"
-            color="primary"
-          />
-        </div>
-      </div>
-      
-      {/* Recent Orders Section */}
-      <div className="recent-orders-section">
-        <div className="section-header">
-          <h2>📋 Recent Orders</h2>
-          <p>Latest transactions and order activity</p>
-        </div>
-        <RecentOrdersTable />
+        <MetricCard
+          title="Monthly Sales"
+          value={metrics.monthlySales}
+          icon="🏆"
+          trend="up"
+          trendValue="+8.3%"
+          delay={400}
+        />
+        <MetricCard
+          title="Cross Revenue"
+          value={metrics.dailySales * 1.25}
+          icon="🔄"
+          trend="up"
+          trendValue="+18.7%"
+          delay={500}
+        />
+        <MetricCard
+          title="Total Discounts"
+          value={metrics.dailySales * 0.12}
+          icon="🏷️"
+          trend="down"
+          trendValue="-3.2%"
+          delay={600}
+        />
+        <MetricCard
+          title="Net Profit"
+          value={metrics.dailySales - metrics.estimatedExpenses - (metrics.dailySales * 0.12)}
+          icon="💰"
+          trend="up"
+          trendValue="+15.4%"
+          delay={700}
+        />
+        <MetricCard
+          title="Profit Margin"
+          value="24.5%"
+          icon="💹"
+          trend="up"
+          trendValue="+2.1%"
+          delay={800}
+        />
+        <MetricCard
+          title="Estimated Expenses"
+          value={metrics.estimatedExpenses}
+          icon="💸"
+          trend="down"
+          trendValue="-5.2%"
+          delay={900}
+        />
       </div>
     </div>
   );
 
-  const RecentOrdersTable = () => {
-    const [recentOrders, setRecentOrders] = useState([]);
-    const [ordersLoading, setOrdersLoading] = useState(true);
+  // Inventory Overview Section
+  const InventoryOverviewSection = () => (
+    <div className="dashboard-section animate-section" style={{ animationDelay: '600ms' }}>
+      <div className="section-header">
+        <h2 className="animate-section-title">
+          📦 Inventory Overview
+        </h2>
+        <p className="animate-section-subtitle">
+          Monitor stock levels and inventory status
+        </p>
+      </div>
+      <div className="inventory-grid">
+        {metrics.stockData.map((item, index) => (
+          <div 
+            key={item.name} 
+            className="inventory-card animate-inventory-card"
+            style={{ animationDelay: `${(index + 1) * 150}ms` }}
+          >
+            <div className="inventory-icon animate-inventory-icon">
+              {item.icon}
+            </div>
+            <div className="inventory-details">
+              <h3 className="animate-inventory-title">{item.name}</h3>
+              <span className={`stock-value ${item.stock < 20 ? 'alert animate-alert' : 'animate-stock'}`}>
+                {item.stock}
+              </span>
+              <p className="animate-inventory-desc">
+                {item.stock < 20 ? 'Low Stock Alert!' : 'In Stock'}
+              </p>
+            </div>
+            <div className="inventory-pulse"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-    useEffect(() => {
-      const fetchRecentOrders = async () => {
-        try {
-          const response = await fetch('http://localhost:5000/api/orders');
-          const orders = await response.json();
-          setRecentOrders(orders.slice(0, 5)); // Get last 5 orders
-        } catch (error) {
-          console.error('Error fetching recent orders:', error);
-        } finally {
-          setOrdersLoading(false);
-        }
-      };
-
-      fetchRecentOrders();
-    }, []);
-
-    if (ordersLoading) {
-      return (
-        <div className="recent-orders-table">
-          <div className="loading-skeleton" style={{ height: '200px' }}></div>
-        </div>
-      );
-    }
-
+  // Enhanced Recent Activity Section
+  const RecentActivitySection = () => {
     return (
-      <div className="recent-orders-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Order #</th>
-              <th>Items</th>
-              <th>Total</th>
-              <th>Status</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentOrders.length > 0 ? (
-              recentOrders.map(order => (
-                <tr key={order.id}>
-                  <td>{order.order_number}</td>
-                  <td>{order.items || 'No items'}</td>
-                  <td>{formatCurrency(order.total)}</td>
-                  <td>
-                    <span className={`status-badge ${order.status}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td>{new Date(order.created_at).toLocaleDateString()}</td>
+      <div className="dashboard-section animate-section" style={{ animationDelay: '800ms' }}>
+        <div className="section-header">
+          <h2 className="animate-section-title">
+            🕒 Recent Activity
+          </h2>
+          <p className="animate-section-subtitle">
+            Latest orders and transactions
+          </p>
+        </div>
+        <div className="recent-orders-table animate-table">
+          {loading ? (
+            <div className="loading-container">
+              {[...Array(5)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className="loading-skeleton animate-skeleton" 
+                  style={{ animationDelay: `${i * 100}ms` }}
+                ></div>
+              ))}
+            </div>
+          ) : orders.length > 0 ? (
+            <table>
+              <thead>
+                <tr className="animate-table-header">
+                  <th>Order ID</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Time</th>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
-                  No orders found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {orders.map((order, index) => (
+                  <tr 
+                    key={order.id} 
+                    className="animate-table-row"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <td className="animate-cell">#{order.id}</td>
+                    <td className="animate-cell">{formatCurrency(order.total)}</td>
+                    <td className="animate-cell">
+                      <span className={`status-badge ${order.status} animate-status-badge`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="animate-cell">
+                      {new Date(order.timestamp || order.created_at).toLocaleTimeString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="no-orders animate-no-orders">
+              <div className="no-orders-icon animate-no-orders-icon">📋</div>
+              <h3 className="animate-no-orders-title">No Recent Orders</h3>
+              <p className="animate-no-orders-text">Orders will appear here once customers start placing them.</p>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
+  // Trigger animations on data updates
+  useEffect(() => {
+    setAnimationTrigger(prev => !prev);
+  }, [metrics, dateRange]);
+
   return (
     <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h1>📊 Dashboard Overview</h1>
-        <DateFilterButtons />
+      <EnhancedHeaderWithStatsPreview />
+      <div className="dashboard-main-grid">
+        <PrimaryMetricsSection />
+        <InventoryOverviewSection />
+        <RecentActivitySection />
       </div>
       
-      <div className="dashboard-content">
-        <OverviewSection />
+      {/* Floating Action Elements */}
+      <div className="floating-elements">
+        <div className="floating-orb orb-1"></div>
+        <div className="floating-orb orb-2"></div>
+        <div className="floating-orb orb-3"></div>
+      </div>
+      
+      {/* Background Animation Elements */}
+      <div className="background-animation">
+        <div className="wave wave-1"></div>
+        <div className="wave wave-2"></div>
+        <div className="wave wave-3"></div>
       </div>
     </div>
   );
