@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
+import { useData } from '../contexts/DataContext';
 import './Dashboard.css';
+import io from 'socket.io-client';
 
 const Dashboard = () => {
+  const { stockData, expenseData, dashboardMetrics, updateDashboardMetrics } = useData();
   const [metrics, setMetrics] = useState({
     dailySales: 0,
     yesterdaySales: 0,
@@ -15,7 +17,11 @@ const Dashboard = () => {
     averageOrderValue: 0,
     totalRevenue: 0,
     totalDiscounts: 0,
-    profitMargin: 0
+    profitMargin: 0,
+    abaSales: 0,
+    acledaSales: 0,
+    cashSales: 0,
+    dueSales: 0
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('today');
@@ -87,6 +93,23 @@ const Dashboard = () => {
       const grossRevenue = dailySales + totalDiscounts;
       const profitMargin = grossRevenue > 0 ? ((dailySales - estimatedExpenses) / grossRevenue * 100) : 0;
       
+      // Calculate payment method specific sales
+      const abaSales = todayOrders
+        .filter(order => order.paymentMethod === 'ABA' || order.paymentMethod === 'aba')
+        .reduce((sum, order) => sum + parseFloat(order.total), 0);
+      
+      const acledaSales = todayOrders
+        .filter(order => order.paymentMethod === 'ACLEDA' || order.paymentMethod === 'acleda')
+        .reduce((sum, order) => sum + parseFloat(order.total), 0);
+      
+      const cashSales = todayOrders
+        .filter(order => order.paymentMethod === 'Cash' || order.paymentMethod === 'cash')
+        .reduce((sum, order) => sum + parseFloat(order.total), 0);
+      
+      const dueSales = todayOrders
+        .filter(order => order.status === 'pending' || order.paymentStatus === 'due')
+        .reduce((sum, order) => sum + parseFloat(order.total), 0);
+      
       // Mock stock data - in real implementation, fetch from inventory API
       const stockData = [
         { name: 'Burgers', stock: 45, icon: '🍔' },
@@ -104,7 +127,11 @@ const Dashboard = () => {
         estimatedExpenses,
         stockData,
         totalDiscounts,
-        profitMargin: profitMargin.toFixed(2)
+        profitMargin: profitMargin.toFixed(2),
+        abaSales,
+        acledaSales,
+        cashSales,
+        dueSales
       }));
       
       if (!orders.length) {
@@ -123,6 +150,10 @@ const Dashboard = () => {
         estimatedExpenses: 612.69,
         totalDiscounts: 245.50,
         profitMargin: 25.8,
+        abaSales: 850.25,
+        acledaSales: 720.50,
+        cashSales: 680.00,
+        dueSales: 200.00,
         stockData: [
           { name: 'Burgers', stock: 45, icon: '🍔' },
           { name: 'Pizzas', stock: 32, icon: '🍕' },
@@ -318,107 +349,87 @@ const Dashboard = () => {
     </div>
   );
 
-  // Primary Metrics Section with enhanced visual design
-  const PrimaryMetricsSection = () => (
-    <div className="dashboard-section animate-section" style={{ animationDelay: '200ms' }}>
+  // Sales Performance Section with enhanced visual design
+  const SalesPerformanceSection = () => (
+    <div className="dashboard-section sales-performance-section animate-section" style={{ animationDelay: '100ms' }}>
       <div className="section-header">
         <h2 className="animate-section-title">
           💰 Sales Performance
         </h2>
         <p className="animate-section-subtitle">
-          Track your revenue and growth metrics in real-time
+          Track your revenue and payment methods in real-time
         </p>
       </div>
-      <div className="metrics-grid">
-        <MetricCard
-          title="Today's Sales"
-          value={metrics.dailySales}
-          icon="💵"
-          trend={calculateGrowth(metrics.dailySales, metrics.yesterdaySales) > 0 ? 'up' : 'down'}
-          trendValue={`${calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}%`}
-          size="large"
-          color="primary"
-          delay={100}
-        />
-        <MetricCard
-          title="Yesterday's Sales"
-          value={metrics.yesterdaySales}
-          icon="📊"
-          trend="neutral"
-          trendValue="Previous day"
-          color="info"
-          delay={200}
-        />
-        <MetricCard
-          title="Weekly Sales"
-          value={metrics.weeklySales}
-          icon="📈"
-          trend="up"
-          trendValue="+12.5%"
-          color="success"
-          delay={300}
-        />
-        <MetricCard
-          title="Monthly Sales"
-          value={metrics.monthlySales}
-          icon="🏆"
-          trend="up"
-          trendValue="+8.3%"
-          color="primary"
-          delay={400}
-        />
-        <MetricCard
-          title="Cross Revenue"
-          value={metrics.dailySales * 1.25}
-          icon="🔄"
-          trend="up"
-          trendValue="+18.7%"
-          color="info"
-          delay={500}
-        />
-        <MetricCard
-          title="Total Discounts"
-          value={metrics.totalDiscounts}
-          icon="🏷️"
-          trend="down"
-          trendValue="-3.2%"
-          color="warning"
-          delay={600}
-        />
-        <MetricCard
-          title="Net Profit"
-          value={metrics.dailySales - metrics.estimatedExpenses - metrics.totalDiscounts}
-          icon="💰"
-          trend="up"
-          trendValue="+15.4%"
-          color="success"
-          delay={700}
-        />
-        <MetricCard
-          title="Profit Margin"
-          value={`${metrics.profitMargin}%`}
-          icon="💹"
-          trend="up"
-          trendValue="+2.1%"
-          color="primary"
-          delay={800}
-        />
-        <MetricCard
-          title="Estimated Expenses"
-          value={metrics.estimatedExpenses}
-          icon="💸"
-          trend="down"
-          trendValue="-5.2%"
-          color="danger"
-          delay={900}
-        />
+      <div className="sales-metrics-grid">
+        <div className="sales-metric-card aba-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '200ms' }}>
+          <div className="metric-icon">🏦</div>
+          <div className="metric-content">
+            <h3>ABA Sales</h3>
+            <div className="metric-value">{formatCurrency(metrics.abaSales || 0)}</div>
+            <div className="metric-trend trend-up">+6.8%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card acleda-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '300ms' }}>
+          <div className="metric-icon">🏛️</div>
+          <div className="metric-content">
+            <h3>Acleda Sales</h3>
+            <div className="metric-value">{formatCurrency(metrics.acledaSales || 0)}</div>
+            <div className="metric-trend trend-up">+4.2%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card due-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '400ms' }}>
+          <div className="metric-icon">⏰</div>
+          <div className="metric-content">
+            <h3>Due Sales</h3>
+            <div className="metric-value">{formatCurrency(metrics.dueSales || 0)}</div>
+            <div className="metric-trend trend-down">-2.1%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card cash-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '500ms' }}>
+          <div className="metric-icon">💵</div>
+          <div className="metric-content">
+            <h3>Cash Sales</h3>
+            <div className="metric-value">{formatCurrency(metrics.cashSales || 0)}</div>
+            <div className="metric-trend trend-neutral">+1.5%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card sales-revenue hover-lift interactive-element animate-metric-card" style={{ animationDelay: '600ms' }}>
+          <div className="metric-icon">📈</div>
+          <div className="metric-content">
+            <h3>Sales Revenue</h3>
+            <div className="metric-value">{formatCurrency(metrics.dailySales || 0)}</div>
+            <div className="metric-trend trend-up">+12.5%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card sales-return hover-lift interactive-element animate-metric-card" style={{ animationDelay: '700ms' }}>
+          <div className="metric-icon">🔄</div>
+          <div className="metric-content">
+            <h3>Sales Return</h3>
+            <div className="metric-value">{formatCurrency(metrics.salesReturn || 0)}</div>
+            <div className="metric-trend trend-down">-1.2%</div>
+          </div>
+        </div>
+        
+        <div className="sales-metric-card profit-margin hover-lift interactive-element animate-metric-card" style={{ animationDelay: '800ms' }}>
+          <div className="metric-icon">💹</div>
+          <div className="metric-content">
+            <h3>Profit Margin</h3>
+            <div className="metric-value">{metrics.profitMargin || 0}%</div>
+            <div className="metric-trend trend-up">+2.1%</div>
+          </div>
+        </div>
       </div>
     </div>
   );
 
   // Enhanced Inventory Overview Section with animations
   const InventoryOverviewSection = () => (
-    <div className="dashboard-section animate-section" style={{ animationDelay: '600ms' }}>
+    <div className="dashboard-section animate-section" style={{ animationDelay: '200ms' }}>
       <div className="section-header">
         <h2 className="animate-section-title">
           📦 Inventory Overview
@@ -461,53 +472,18 @@ const Dashboard = () => {
   // Enhanced Recent Activity Section with improved animations
   const RecentActivitySection = () => {
     return (
-      <div className="dashboard-section animate-section" style={{ animationDelay: '800ms' }}>
+      <div className="dashboard-section animate-section" style={{ animationDelay: '400ms' }}>
         <div className="section-header">
           <h2 className="animate-section-title">
-            🔄 Recent Activity
+            🕒 Recent Activity
           </h2>
           <p className="animate-section-subtitle">
-            Real-time updates and recent transactions
+            Latest orders and transactions
           </p>
         </div>
-        
-        <div className="activity-content">
-          <div className="activity-feed">
-            <h3 className="activity-feed-title">Live Activity Feed</h3>
-            <div className="activity-items">
-              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '900ms' }}>
-                <div className="activity-icon">💰</div>
-                <div className="activity-details">
-                  <span className="activity-text">New sale completed</span>
-                  <span className="activity-time">2 minutes ago</span>
-                </div>
-              </div>
-              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '1000ms' }}>
-                <div className="activity-icon">📦</div>
-                <div className="activity-details">
-                  <span className="activity-text">Inventory updated</span>
-                  <span className="activity-time">5 minutes ago</span>
-                </div>
-              </div>
-              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '1100ms' }}>
-                <div className="activity-icon">👤</div>
-                <div className="activity-details">
-                  <span className="activity-text">New customer registered</span>
-                  <span className="activity-time">10 minutes ago</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="recent-orders">
-            <h3 className="recent-orders-title">Recent Orders</h3>
-            {loading ? (
-              <div className="loading-skeleton">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="skeleton-row loading-shimmer"></div>
-                ))}
-              </div>
-            ) : orders && orders.length > 0 ? (
+        <div className="recent-orders">
+          <div className="orders-container">
+            {orders && orders.length > 0 ? (
               <div className="orders-table">
                 <div className="table-header">
                   <span>Order ID</span>
@@ -519,7 +495,7 @@ const Dashboard = () => {
                   <div 
                     key={order._id} 
                     className="table-row animate-metric-card hover-lift interactive-element"
-                    style={{ animationDelay: `${1200 + index * 100}ms` }}
+                    style={{ animationDelay: `${600 + index * 100}ms` }}
                   >
                     <span className="order-id">#{(order._id || '').slice(-6)}</span>
                     <span className="customer-name">{order.customerName || 'Walk-in Customer'}</span>
@@ -531,13 +507,81 @@ const Dashboard = () => {
                 ))}
               </div>
             ) : (
-              <div className="no-orders animate-metric-card" style={{ animationDelay: '1200ms' }}>
+              <div className="no-orders animate-metric-card" style={{ animationDelay: '600ms' }}>
                 <div className="no-orders-icon">📋</div>
                 <p>No recent orders found</p>
                 <small>Orders will appear here once you start making sales</small>
               </div>
             )}
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Stock Information Section
+  const StockInformationSection = () => {
+    return (
+      <div className="dashboard-section stock-information-section animate-section" style={{ animationDelay: '200ms' }}>
+        <div className="section-header">
+          <h2 className="animate-section-title">
+            📊 Stock Information
+          </h2>
+          <p className="animate-section-subtitle">
+            Comprehensive inventory tracking and analytics
+          </p>
+        </div>
+        <div className="stock-metrics-grid">
+          {dashboardMetrics.stockData && dashboardMetrics.stockData.map((item, index) => (
+            <div 
+              key={index} 
+              className={`stock-metric-card ${item.name.toLowerCase().replace(/\s+/g, '-')} animate-metric-card hover-lift`}
+              style={{ animationDelay: `${300 + index * 100}ms` }}
+            >
+              <div className="metric-icon">{item.icon}</div>
+              <div className="metric-content">
+                <h3>{item.name}</h3>
+                <div className="metric-value">{item.value}</div>
+                <div className={`metric-trend trend-${item.trend}`}>
+                  {item.trendValue}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Expense Information Section
+  const ExpenseInformationSection = () => {
+    return (
+      <div className="dashboard-section expense-information-section animate-section" style={{ animationDelay: '600ms' }}>
+        <div className="section-header">
+          <h2 className="animate-section-title">
+            💸 Expense Information
+          </h2>
+          <p className="animate-section-subtitle">
+            Track and monitor business expenses
+          </p>
+        </div>
+        <div className="expense-metrics-grid">
+          {dashboardMetrics.expenseData && dashboardMetrics.expenseData.map((item, index) => (
+            <div 
+              key={index} 
+              className={`expense-metric-card ${item.name.toLowerCase().replace(/\s+/g, '-')} animate-metric-card hover-lift`}
+              style={{ animationDelay: `${700 + index * 100}ms` }}
+            >
+              <div className="metric-icon">{item.icon}</div>
+              <div className="metric-content">
+                <h3>{item.name}</h3>
+                <div className="metric-value">{item.value}</div>
+                <div className={`metric-trend trend-${item.trend}`}>
+                  {item.trendValue}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -550,9 +594,10 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <EnhancedHeaderWithStatsPreview />
       <div className="dashboard-main-grid">
-        <PrimaryMetricsSection />
+        <SalesPerformanceSection />
+        <StockInformationSection />
+        <ExpenseInformationSection />
         <InventoryOverviewSection />
         <RecentActivitySection />
       </div>

@@ -846,12 +846,6 @@ const ItemManagement = ({
           >
             📤 Import/Export
           </button>
-          <button 
-            className={`nav-btn ${activeSection === 'add-stock' ? 'active' : ''}`}
-            onClick={() => setActiveSection('add-stock')}
-          >
-            📦 Add Stock
-          </button>
         </div>
       </div>
       
@@ -860,7 +854,6 @@ const ItemManagement = ({
         {activeSection === 'add' && renderAddItem()}
         {activeSection === 'add-category' && renderAddCategory()}
         {activeSection === 'import-export' && renderImportExport()}
-        {activeSection === 'add-stock' && renderAddStock()}
       </div>
     </div>
   );

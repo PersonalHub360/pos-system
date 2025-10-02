@@ -1141,9 +1141,6 @@ const Items = ({
           <button className="btn-secondary" onClick={() => setShowCategoryModal(true)}>
             🏷️ Categories
           </button>
-          <button className="btn-secondary" onClick={() => setShowStockModal(true)}>
-            📦 Add Stock
-          </button>
           <button className="btn-secondary" onClick={() => setShowImportModal(true)}>
             📥 Import Items
           </button>
@@ -1311,7 +1308,6 @@ const Items = ({
       {showEditModal && renderModal(true)}
       {showImportModal && renderImportModal()}
       {showCategoryModal && renderCategoryModal()}
-      {showStockModal && renderStockModal()}
     </div>
   );
 };

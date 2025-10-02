@@ -9,6 +9,8 @@ const Sidebar = ({ onNavigate, currentView = 'pos', isVisible = true, onToggle }
     { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981' },
     { icon: '📦', label: 'Items', active: currentView === 'items', color: '#F59E0B' },
     { icon: '🛒', label: 'Purchase', active: currentView === 'purchase', color: '#8B5CF6' },
+    { icon: '📋', label: 'Stock Information', active: currentView === 'stock information', color: '#7C3AED' },
+    { icon: '💸', label: 'Expense Information', active: currentView === 'expense information', color: '#EC4899' },
     { icon: '👥', label: 'HRM System', active: currentView === 'hrm system', color: '#EF4444' },
     { icon: '💰', label: 'Payroll System', active: currentView === 'payroll system', color: '#059669' },
     { icon: '🍽️', label: 'Table Management', active: currentView === 'table management', color: '#DC2626' },

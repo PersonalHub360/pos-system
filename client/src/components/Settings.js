@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Settings.css';
 
-const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
+const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
   // State management for different sections
   const [activeSection, setActiveSection] = useState('staff');
   const [showModal, setShowModal] = useState(false);
@@ -769,7 +769,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <input
                   type="text"
                   name="invoicePrefix"
-                  value={invoiceSettings.invoicePrefix}
+                  value={invoiceSettings?.invoicePrefix || 'INV'}
                   onChange={handleInvoiceSettingsChange}
                 />
               </div>
@@ -778,7 +778,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <input
                   type="number"
                   name="invoiceNumberStart"
-                  value={invoiceSettings.invoiceNumberStart}
+                  value={invoiceSettings?.invoiceNumberStart || 1000}
                   onChange={handleInvoiceSettingsChange}
                 />
               </div>
@@ -786,7 +786,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <label>Logo Position</label>
                 <select
                   name="logoPosition"
-                  value={invoiceSettings.logoPosition}
+                  value={invoiceSettings?.logoPosition || 'top-left'}
                   onChange={handleInvoiceSettingsChange}
                 >
                   <option value="top-left">Top Left</option>
@@ -798,7 +798,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <label>Footer Text</label>
                 <textarea
                   name="footerText"
-                  value={invoiceSettings.footerText}
+                  value={invoiceSettings?.footerText || 'Thank you for your business!'}
                   onChange={handleInvoiceSettingsChange}
                   rows="2"
                 />
@@ -807,7 +807,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <label>Terms and Conditions</label>
                 <textarea
                   name="termsAndConditions"
-                  value={invoiceSettings.termsAndConditions}
+                  value={invoiceSettings?.termsAndConditions || 'All sales are final. No returns without receipt.'}
                   onChange={handleInvoiceSettingsChange}
                   rows="3"
                 />
@@ -819,7 +819,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <input
                   type="checkbox"
                   name="showTax"
-                  checked={invoiceSettings.showTax}
+                  checked={invoiceSettings?.showTax || false}
                   onChange={handleInvoiceSettingsChange}
                 />
                 Show Tax on Invoice
@@ -828,7 +828,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                 <input
                   type="checkbox"
                   name="showDiscount"
-                  checked={invoiceSettings.showDiscount}
+                  checked={invoiceSettings?.showDiscount || false}
                   onChange={handleInvoiceSettingsChange}
                 />
                 Show Discount on Invoice
@@ -843,20 +843,20 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                   <input
                     type="checkbox"
                     name="multiCurrency.enabled"
-                    checked={invoiceSettings.multiCurrency.enabled}
+                    checked={invoiceSettings?.multiCurrency?.enabled || false}
                     onChange={handleInvoiceSettingsChange}
                   />
                   Enable Multi-Currency Display on Receipts
                 </label>
               </div>
 
-              {invoiceSettings.multiCurrency.enabled && (
+              {invoiceSettings?.multiCurrency?.enabled && (
                 <div className="multi-currency-config">
                   <div className="form-group">
                     <label>Number of Currencies to Display</label>
                     <select
                       name="multiCurrency.showCurrencyCount"
-                      value={invoiceSettings.multiCurrency.showCurrencyCount}
+                      value={invoiceSettings?.multiCurrency?.showCurrencyCount || 1}
                       onChange={handleInvoiceSettingsChange}
                     >
                       <option value={1}>1 Currency (Primary Only)</option>
@@ -870,7 +870,7 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                       <label>Primary Currency</label>
                       <select
                         name="multiCurrency.primaryCurrency"
-                        value={invoiceSettings.multiCurrency.primaryCurrency}
+                        value={invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'}
                         onChange={handleInvoiceSettingsChange}
                       >
                         <option value="USD">USD - US Dollar</option>
@@ -881,12 +881,12 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                       </select>
                     </div>
 
-                    {invoiceSettings.multiCurrency.showCurrencyCount >= 2 && (
+                    {invoiceSettings?.multiCurrency?.showCurrencyCount >= 2 && (
                       <div className="form-group">
                         <label>Secondary Currency</label>
                         <select
                           name="multiCurrency.secondaryCurrency"
-                          value={invoiceSettings.multiCurrency.secondaryCurrency}
+                          value={invoiceSettings?.multiCurrency?.secondaryCurrency || 'KHR'}
                           onChange={handleInvoiceSettingsChange}
                         >
                           <option value="KHR">KHR - Cambodian Riel</option>
@@ -898,12 +898,12 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
                       </div>
                     )}
 
-                    {invoiceSettings.multiCurrency.showCurrencyCount >= 3 && (
+                    {invoiceSettings?.multiCurrency?.showCurrencyCount >= 3 && (
                       <div className="form-group">
                         <label>Tertiary Currency</label>
                         <select
                           name="multiCurrency.tertiaryCurrency"
-                          value={invoiceSettings.multiCurrency.tertiaryCurrency}
+                          value={invoiceSettings?.multiCurrency?.tertiaryCurrency || ''}
                           onChange={handleInvoiceSettingsChange}
                         >
                           <option value="">Select Currency</option>
@@ -919,37 +919,37 @@ const Settings = ({ invoiceSettings, setInvoiceSettings }) => {
 
                   {/* Exchange Rate Settings */}
                   <div className="exchange-rates-section">
-                    <h4>Exchange Rates (Base: {invoiceSettings.multiCurrency.primaryCurrency})</h4>
+                    <h4>Exchange Rates (Base: {invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'})</h4>
                     <div className="form-grid">
-                      {invoiceSettings.multiCurrency.showCurrencyCount >= 2 && 
-                       invoiceSettings.multiCurrency.secondaryCurrency !== invoiceSettings.multiCurrency.primaryCurrency && (
+                      {(invoiceSettings?.multiCurrency?.showCurrencyCount || 1) >= 2 && 
+                       (invoiceSettings?.multiCurrency?.secondaryCurrency || 'KHR') !== (invoiceSettings?.multiCurrency?.primaryCurrency || 'USD') && (
                         <div className="form-group">
                           <label>
-                            1 {invoiceSettings.multiCurrency.primaryCurrency} = ? {invoiceSettings.multiCurrency.secondaryCurrency}
+                            1 {invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'} = ? {invoiceSettings?.multiCurrency?.secondaryCurrency || 'KHR'}
                           </label>
                           <input
                             type="number"
                             step="0.01"
-                            name={`exchangeRate.${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.secondaryCurrency}`}
-                            value={invoiceSettings.multiCurrency.exchangeRates[`${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.secondaryCurrency}`] || ''}
+                            name={`exchangeRate.${invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'}_TO_${invoiceSettings?.multiCurrency?.secondaryCurrency || 'KHR'}`}
+                            value={invoiceSettings?.multiCurrency?.exchangeRates?.[`${invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'}_TO_${invoiceSettings?.multiCurrency?.secondaryCurrency || 'KHR'}`] || ''}
                             onChange={handleInvoiceSettingsChange}
                             placeholder="Enter exchange rate"
                           />
                         </div>
                       )}
 
-                      {invoiceSettings.multiCurrency.showCurrencyCount >= 3 && 
-                       invoiceSettings.multiCurrency.tertiaryCurrency && 
-                       invoiceSettings.multiCurrency.tertiaryCurrency !== invoiceSettings.multiCurrency.primaryCurrency && (
+                      {(invoiceSettings?.multiCurrency?.showCurrencyCount || 1) >= 3 && 
+                       (invoiceSettings?.multiCurrency?.tertiaryCurrency || '') && 
+                       (invoiceSettings?.multiCurrency?.tertiaryCurrency || '') !== (invoiceSettings?.multiCurrency?.primaryCurrency || 'USD') && (
                         <div className="form-group">
                           <label>
-                            1 {invoiceSettings.multiCurrency.primaryCurrency} = ? {invoiceSettings.multiCurrency.tertiaryCurrency}
+                            1 {invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'} = ? {invoiceSettings?.multiCurrency?.tertiaryCurrency || ''}
                           </label>
                           <input
                             type="number"
                             step="0.01"
-                            name={`exchangeRate.${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.tertiaryCurrency}`}
-                            value={invoiceSettings.multiCurrency.exchangeRates[`${invoiceSettings.multiCurrency.primaryCurrency}_TO_${invoiceSettings.multiCurrency.tertiaryCurrency}`] || ''}
+                            name={`exchangeRate.${invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'}_TO_${invoiceSettings?.multiCurrency?.tertiaryCurrency || ''}`}
+                            value={invoiceSettings?.multiCurrency?.exchangeRates?.[`${invoiceSettings?.multiCurrency?.primaryCurrency || 'USD'}_TO_${invoiceSettings?.multiCurrency?.tertiaryCurrency || ''}`] || ''}
                             onChange={handleInvoiceSettingsChange}
                             placeholder="Enter exchange rate"
                           />

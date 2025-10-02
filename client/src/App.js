@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import './App.css';
 import './theme.css';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { DataProvider } from './contexts/DataContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ProductGrid from './components/ProductGrid';
@@ -18,6 +20,9 @@ import Reports from './components/Reports';
 import Items from './components/Items';
 import Settings from './components/Settings';
 import Purchase from './components/Purchase';
+import StockInformation from './components/StockInformation';
+import ExpenseInformation from './components/ExpenseInformation';
+import AddProduct from './components/AddProduct';
 import axios from 'axios';
 
 function App() {
@@ -384,7 +389,18 @@ function App() {
     }
     
     if (currentView === 'settings') {
-      return <Settings />;
+      return <Settings 
+        invoiceSettings={invoiceSettings}
+        setInvoiceSettings={setInvoiceSettings}
+      />;
+    }
+    
+    if (currentView === 'stock information') {
+      return <StockInformation />;
+    }
+    
+    if (currentView === 'expense information') {
+      return <ExpenseInformation />;
     }
     
     // Default to POS
@@ -419,28 +435,35 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="app">
-        <Sidebar 
-          onNavigate={handleNavigation} 
-          currentView={currentView} 
-          isVisible={sidebarVisible}
-          onToggle={() => setSidebarVisible(!sidebarVisible)}
-        />
-        <div className="main-content" onClick={handleMainContentClick}>
-          <Header 
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            onRestoreDraft={handleRestoreDraft}
-            onEditDraft={handleEditDraft}
-            onReturnToCart={handleReturnToCart}
-            draftOrders={draftOrders}
-            setDraftOrders={setDraftOrders}
-            onSidebarToggle={() => setSidebarVisible(!sidebarVisible)}
-            sidebarVisible={sidebarVisible}
-          />
-          {renderMainContent()}
-        </div>
-      </div>
+      <DataProvider>
+        <Routes>
+          <Route path="/add-product" element={<AddProduct />} />
+          <Route path="/*" element={
+            <div className="app">
+              <Sidebar 
+                onNavigate={handleNavigation} 
+                currentView={currentView} 
+                isVisible={sidebarVisible}
+                onToggle={() => setSidebarVisible(!sidebarVisible)}
+              />
+              <div className="main-content" onClick={handleMainContentClick}>
+                <Header 
+                  searchTerm={searchTerm}
+                  setSearchTerm={setSearchTerm}
+                  onRestoreDraft={handleRestoreDraft}
+                  onEditDraft={handleEditDraft}
+                  onReturnToCart={handleReturnToCart}
+                  draftOrders={draftOrders}
+                  setDraftOrders={setDraftOrders}
+                  onSidebarToggle={() => setSidebarVisible(!sidebarVisible)}
+                  sidebarVisible={sidebarVisible}
+                />
+                {renderMainContent()}
+              </div>
+            </div>
+          } />
+        </Routes>
+      </DataProvider>
     </ThemeProvider>
   );
 }
