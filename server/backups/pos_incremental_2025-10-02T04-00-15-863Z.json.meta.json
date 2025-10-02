@@ -1,0 +1,10 @@
+{
+  "filename": "pos_incremental_2025-10-02T04-00-15-863Z.json",
+  "path": "C:\\Users\\James_Bond_007\\Downloads\\Pos System\\pos-system\\server\\backups\\pos_incremental_2025-10-02T04-00-15-863Z.json",
+  "description": "Scheduled hourly backup",
+  "created_at": "2025-10-02T04:00:15.871Z",
+  "size": 168,
+  "type": "incremental",
+  "since": "2025-10-02T03:00:15.863Z",
+  "records_count": 0
+}

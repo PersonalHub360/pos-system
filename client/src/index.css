@@ -2,6 +2,8 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  color: #000000 !important;
+  font-weight: bold !important;
 }
 
 body {
@@ -11,13 +13,30 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--bg-primary);
-  color: var(--text-primary);
+  color: #000000 !important;
+  font-weight: bold !important;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+  color: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* Comprehensive text element overrides */
+h1, h2, h3, h4, h5, h6, p, span, div, a, button, input, textarea, select, label, td, th, li, ul, ol {
+  color: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* Specific overrides for common classes */
+.page-title, .breadcrumb, .nav-item, .user-name, .user-role, .item-name, .item-price, 
+.stat-value, .stat-label, .card-title, .card-text, .btn, .form-control, 
+.dropdown-item, .modal-title, .modal-body, .table th, .table td {
+  color: #000000 !important;
+  font-weight: bold !important;
 }
 
 /* Scrollbar Styling */

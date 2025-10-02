@@ -45,6 +45,7 @@ function initializeRoutes(db) {
   router.get('/auth/profile', authMiddleware.verifyToken, authController.getProfile.bind(authController));
   router.put('/auth/profile', authMiddleware.verifyToken, authController.updateProfile.bind(authController));
   router.post('/auth/change-password', authMiddleware.verifyToken, authController.changePassword.bind(authController));
+  router.post('/auth/logout', authMiddleware.verifyToken, authController.logout.bind(authController));
 
   // ============================================================================
   // USER MANAGEMENT ROUTES (Admin Only)

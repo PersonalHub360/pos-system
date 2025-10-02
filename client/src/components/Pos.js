@@ -35,7 +35,6 @@ const Pos = ({
   const [selectedTable, setSelectedTable] = useState('');
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
-    phone: '',
     email: ''
   });
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -296,13 +295,6 @@ const Pos = ({
               onChange={(e) => setCustomerInfo({...customerInfo, name: e.target.value})}
               className="customer-input"
             />
-            <input
-              type="text"
-              placeholder="Phone Number"
-              value={customerInfo.phone}
-              onChange={(e) => setCustomerInfo({...customerInfo, phone: e.target.value})}
-              className="customer-input"
-            />
           </div>
 
           {/* Discount Section */}
@@ -383,10 +375,28 @@ const Pos = ({
           <h1>Point of Sale</h1>
           <div className="datetime-display">
             <div className="date-box">
-              <span className="date-label">Date</span>
-              <span className="date-value">{currentDateTime.toLocaleDateString()}</span>
-              <span className="time-label">Time</span>
-              <span className="time-value">{currentDateTime.toLocaleTimeString()}</span>
+              <div className="datetime-icon">📅</div>
+              <div className="datetime-content">
+                <span className="date-label">Date</span>
+                <span className="date-value">{currentDateTime.toLocaleDateString('en-US', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}</span>
+              </div>
+            </div>
+            <div className="time-box">
+              <div className="datetime-icon">🕐</div>
+              <div className="datetime-content">
+                <span className="time-label">Time</span>
+                <span className="time-value">{currentDateTime.toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: true
+                })}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -427,7 +437,7 @@ const Pos = ({
         onCompleteOrder={() => {
           // Clear cart after successful order completion
           handleClearCart();
-          setCustomerInfo({ name: '', phone: '', email: '' });
+          setCustomerInfo({ name: '', email: '' });
           setDiscountValue(0);
           setSelectedTable('');
           setCurrentReceipt(null);

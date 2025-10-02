@@ -51,8 +51,16 @@ const InventoryManage = () => {
   const fetchInventoryData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/inventory');
-      if (!response.ok) throw new Error('Failed to fetch inventory');
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest('/api/inventory');
+      if (!response || !response.ok) throw new Error('Failed to fetch inventory');
       const data = await response.json();
       setInventoryData(data.items || []);
     } catch (err) {
@@ -137,8 +145,16 @@ const InventoryManage = () => {
 
   const fetchStockMovements = useCallback(async () => {
     try {
-      const response = await fetch('/api/inventory/movements');
-      if (!response.ok) throw new Error('Failed to fetch stock movements');
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest('/api/inventory/movements');
+      if (!response || !response.ok) throw new Error('Failed to fetch stock movements');
       const data = await response.json();
       setStockMovements(data.movements || []);
     } catch (err) {
@@ -176,8 +192,16 @@ const InventoryManage = () => {
 
   const fetchSuppliers = useCallback(async () => {
     try {
-      const response = await fetch('/api/suppliers');
-      if (!response.ok) throw new Error('Failed to fetch suppliers');
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest('/api/suppliers');
+      if (!response || !response.ok) throw new Error('Failed to fetch suppliers');
       const data = await response.json();
       setSuppliers(data.suppliers || []);
     } catch (err) {
@@ -217,13 +241,20 @@ const InventoryManage = () => {
   const handleAddItem = async (itemData) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/inventory', {
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest('/api/inventory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(itemData)
       });
       
-      if (!response.ok) throw new Error('Failed to add item');
+      if (!response || !response.ok) throw new Error('Failed to add item');
       
       await fetchInventoryData();
       setShowModal(false);
@@ -238,13 +269,20 @@ const InventoryManage = () => {
   const handleUpdateItem = async (itemId, itemData) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/inventory/${itemId}`, {
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest(`/api/inventory/${itemId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(itemData)
       });
       
-      if (!response.ok) throw new Error('Failed to update item');
+      if (!response || !response.ok) throw new Error('Failed to update item');
       
       await fetchInventoryData();
       setShowModal(false);
@@ -259,13 +297,20 @@ const InventoryManage = () => {
   const handleStockAdjustment = async (itemId, adjustmentData) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/inventory/${itemId}/adjust`, {
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest(`/api/inventory/${itemId}/adjust`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(adjustmentData)
       });
       
-      if (!response.ok) throw new Error('Failed to adjust stock');
+      if (!response || !response.ok) throw new Error('Failed to adjust stock');
       
       await fetchInventoryData();
       await fetchStockMovements();
@@ -283,11 +328,19 @@ const InventoryManage = () => {
     
     try {
       setLoading(true);
-      const response = await fetch(`/api/inventory/${itemId}`, {
+      // Import auth service dynamically to avoid circular dependencies
+      const authService = (await import('../utils/auth')).default;
+      
+      // Ensure user is authenticated
+      if (!authService.isAuthenticated()) {
+        await authService.autoLogin();
+      }
+      
+      const response = await authService.apiRequest(`/api/inventory/${itemId}`, {
         method: 'DELETE'
       });
       
-      if (!response.ok) throw new Error('Failed to delete item');
+      if (!response || !response.ok) throw new Error('Failed to delete item');
       
       await fetchInventoryData();
     } catch (err) {

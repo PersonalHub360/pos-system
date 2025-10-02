@@ -9,6 +9,18 @@
   position: relative;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(10px);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-hidden {
+  transform: translateX(-100%);
+  width: 0;
+  overflow: hidden;
+}
+
+/* Ensure the main content adjusts when sidebar is hidden */
+.app {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-header {

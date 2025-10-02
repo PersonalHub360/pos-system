@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './DraftList.css';
 
-const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrders }) => {
+const DraftList = ({ isOpen, onClose, onRestoreDraft, onEditDraft, onReturnToCart, draftOrders, setDraftOrders }) => {
   const [drafts, setDrafts] = useState([]);
   const [selectedDrafts, setSelectedDrafts] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
@@ -102,6 +102,32 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrder
     }
   };
 
+  const handleBulkReturnToCart = () => {
+    if (selectedDrafts.length === 0) {
+      alert('Please select drafts to return to cart.');
+      return;
+    }
+
+    if (selectedDrafts.length > 1) {
+      alert('Please select only one draft to return to cart at a time.');
+      return;
+    }
+
+    const draftIndex = selectedDrafts[0];
+    const draft = drafts[draftIndex];
+    const itemCount = draft.cart ? draft.cart.length : 0;
+    const total = draft.cart ? draft.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) : 0;
+
+    const confirmReturn = window.confirm(
+      `Return draft order to cart?\n\nTable: ${draft.table || 'Not selected'}\nItems: ${itemCount}\nTotal: $${total.toFixed(2)}\n\nThis will load the order into your current cart.`
+    );
+
+    if (confirmReturn && onReturnToCart) {
+      onReturnToCart(draft, draftIndex);
+      onClose();
+    }
+  };
+
   const handleBulkReissueBills = () => {
     if (selectedDrafts.length === 0) {
       alert('Please select drafts to reissue bills.');
@@ -131,6 +157,20 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrder
         console.log(`Reissuing order items for draft ${index + 1}`);
       });
       alert(`${selectedDrafts.length} order(s) reissued successfully!`);
+    }
+  };
+
+  const handleEditDraft = (draft, index) => {
+    const itemCount = draft.cart ? draft.cart.length : 0;
+    const total = draft.cart ? draft.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0) : 0;
+    
+    const confirmEdit = window.confirm(
+      `Edit draft order?\n\nTable: ${draft.table || 'Not selected'}\nItems: ${itemCount}\nTotal: $${total.toFixed(2)}\n\nThis will load the order for editing.`
+    );
+    
+    if (confirmEdit && onEditDraft) {
+      onEditDraft(draft, index);
+      onClose();
     }
   };
 
@@ -198,12 +238,6 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrder
               </label>
               {selectedDrafts.length > 0 && (
                 <div className="bulk-actions">
-                  <button className="reissue-bills-btn" onClick={handleBulkReissueBills}>
-                    📄 Reissue Bills ({selectedDrafts.length})
-                  </button>
-                  <button className="reissue-orders-btn" onClick={handleBulkReissueOrders}>
-                    🍽️ Reissue Orders ({selectedDrafts.length})
-                  </button>
                   <button className="delete-selected-btn" onClick={handleDeleteSelected}>
                     🗑️ Delete Selected ({selectedDrafts.length})
                   </button>
@@ -235,25 +269,18 @@ const DraftList = ({ isOpen, onClose, onRestoreDraft, draftOrders, setDraftOrder
                     
                     <div className="draft-actions">
                       <button 
-                        className="restore-btn"
-                        onClick={() => handleRestoreDraft(draft, index)}
-                        title="Restore Draft"
+                        className="edit-btn"
+                        onClick={() => handleEditDraft(draft, index)}
+                        title="Edit Draft"
                       >
-                        📋
+                        ✏️
                       </button>
                       <button 
                         className="reissue-bill-btn"
                         onClick={() => handleReissueBill(draft, index)}
-                        title="Reissue Bill"
+                        title="Print Order"
                       >
-                        📄
-                      </button>
-                      <button 
-                        className="reissue-order-btn"
-                        onClick={() => handleReissueOrderItems(draft, index)}
-                        title="Reissue Order Items"
-                      >
-                        🍽️
+                        🖨️
                       </button>
                       <button 
                         className="delete-btn"

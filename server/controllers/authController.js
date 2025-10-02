@@ -200,6 +200,29 @@ class AuthController {
     }
   }
 
+  // Logout method
+  async logout(req, res) {
+    try {
+      const userId = req.user.id;
+      const username = req.user.username;
+
+      // In a JWT-based system, logout is primarily handled client-side
+      // by removing the token. However, we can log the logout event
+      // and potentially invalidate the token if using a blacklist system.
+
+      // Log the logout event for audit purposes
+      console.log(`User ${username} (ID: ${userId}) logged out`);
+
+      res.json({ 
+        message: 'Logout successful',
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({ error: 'Internal server error during logout' });
+    }
+  }
+
   // Helper methods
   generateToken(userId, username, role) {
     return jwt.sign(

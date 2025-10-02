@@ -16,7 +16,7 @@ class TableController {
           SUM(CASE WHEN o.order_status = 'completed' AND DATE(o.created_at) = DATE('now') THEN o.total ELSE 0 END) as today_revenue
         FROM tables t
         LEFT JOIN orders o ON t.id = o.table_id
-        WHERE 1=1
+        WHERE t.is_active = 1
       `;
 
       const params = [];

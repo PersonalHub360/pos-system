@@ -47,16 +47,13 @@ const ReceiptModal = ({
           </div>
 
           {/* Customer & Table Info - Only show if there's content */}
-          {(receiptData.table || receiptData.customer.name || receiptData.customer.phone) && (
+          {(receiptData.table || receiptData.customer.name) && (
             <div className="order-info">
               {receiptData.table && (
                 <p><strong>Table:</strong> {receiptData.table}</p>
               )}
               {receiptData.customer.name && (
                 <p><strong>Customer:</strong> {receiptData.customer.name}</p>
-              )}
-              {receiptData.customer.phone && (
-                <p><strong>Phone:</strong> {receiptData.customer.phone}</p>
               )}
             </div>
           )}

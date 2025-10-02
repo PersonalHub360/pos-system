@@ -11,11 +11,13 @@ import ItemManagement from './components/ItemManagement';
 import StoreManagement from './components/StoreManagement';
 import SalesManagement from './components/SalesManagement';
 import TableManagement from './components/TableManagement';
-import InventoryManage from './components/InventoryManage';
+import HRMSystem from './components/HRMSystem';
+import PayrollSystem from './components/PayrollSystem';
 import Pos from './components/Pos';
 import Reports from './components/Reports';
 import Items from './components/Items';
 import Settings from './components/Settings';
+import Purchase from './components/Purchase';
 import axios from 'axios';
 
 function App() {
@@ -30,6 +32,7 @@ function App() {
   const [draftOrders, setDraftOrders] = useState([]); // Draft orders list
   const [showReceipt, setShowReceipt] = useState(false); // Receipt modal state
   const [currentReceipt, setCurrentReceipt] = useState(null); // Current receipt data
+  const [sidebarVisible, setSidebarVisible] = useState(true); // Sidebar visibility state
 
   // Invoice Settings State - shared between Settings and OrderPanel
   const [invoiceSettings, setInvoiceSettings] = useState({
@@ -236,6 +239,70 @@ function App() {
     });
   };
 
+  const handleEditDraft = (draft, draftIndex) => {
+    // Restore cart items for editing
+    if (draft.cart && Array.isArray(draft.cart)) {
+      setCart(draft.cart);
+    }
+    
+    // Store draft state and index for editing mode
+    setDraftState({
+      dining: draft.dining || '',
+      table: draft.table || '',
+      extraDiscount: draft.extraDiscount || 0,
+      couponDiscount: draft.couponDiscount || 0,
+      orderNotes: draft.orderNotes || {},
+      isEditing: true,
+      editingIndex: draftIndex
+    });
+    
+    // Navigate to POS view for editing
+    setCurrentView('pos');
+  };
+
+  const handleReturnToCart = (draft, draftIndex) => {
+    // Add draft items to current cart (merge with existing items)
+    if (draft.cart && Array.isArray(draft.cart)) {
+      const mergedCart = [...cart];
+      
+      draft.cart.forEach(draftItem => {
+        const existingItemIndex = mergedCart.findIndex(
+          item => item.id === draftItem.id && item.name === draftItem.name
+        );
+        
+        if (existingItemIndex >= 0) {
+          // Item exists, add quantities
+          mergedCart[existingItemIndex].quantity += draftItem.quantity;
+        } else {
+          // New item, add to cart
+          mergedCart.push({ ...draftItem });
+        }
+      });
+      
+      setCart(mergedCart);
+    }
+    
+    // Set table if not already selected
+    if (draft.table && (!draftState || !draftState.table)) {
+      setDraftState(prev => ({
+        ...prev,
+        table: draft.table
+      }));
+    }
+    
+    // Remove the draft from localStorage after returning to cart
+    const existingDrafts = JSON.parse(localStorage.getItem('orderDrafts') || '[]');
+    const updatedDrafts = existingDrafts.filter((_, i) => i !== draftIndex);
+    localStorage.setItem('orderDrafts', JSON.stringify(updatedDrafts));
+    setDraftOrders(updatedDrafts);
+    
+    // Navigate to POS view
+    setCurrentView('pos');
+    
+    // Show success message
+    alert('Draft order items added to cart successfully!');
+  };
+
   const handleNavigation = (view) => {
     setCurrentView(view);
   };
@@ -275,10 +342,6 @@ function App() {
       />;
     }
     
-    if (currentView === 'inventory manage') {
-      return <InventoryManage />;
-    }
-    
     if (currentView === 'store management') {
       return <StoreManagement />;
     }
@@ -291,64 +354,89 @@ function App() {
       return <Reports />;
     }
     
-    if (currentView === 'items') {
-      return <Items />;
+    if (currentView === 'purchase') {
+      return <Purchase />;
+    }
+    
+    if (currentView === 'hrm system') {
+      return <HRMSystem />;
+    }
+    
+    if (currentView === 'payroll system') {
+      return <PayrollSystem />;
     }
     
     if (currentView === 'table management') {
       return <TableManagement />;
     }
     
-    if (currentView === 'settings') {
-      return <Settings 
-        invoiceSettings={invoiceSettings}
-        setInvoiceSettings={setInvoiceSettings}
+    if (currentView === 'items') {
+      return <Items 
+        products={products}
+        setProducts={setProducts}
+        categories={categories.filter(cat => cat !== 'Show All')}
+        setCategories={(newCategories) => setCategories(['Show All', ...newCategories])}
+        onRefreshData={() => {
+          fetchProducts();
+          fetchCategories();
+        }}
       />;
     }
     
-    // Default POS view
-    return (
-      <div className="content-area">
-        <div className="products-section">
-          <ProductGrid
-            products={filteredProducts}
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryChange={handleCategoryChange}
-            onAddToCart={addToCart}
-            loading={loading}
-          />
-        </div>
-        <div className="order-section">
-          <OrderPanel
-            cart={cart}
-            onUpdateItem={updateCartItem}
-            onRemoveItem={removeFromCart}
-            onClearCart={clearCart}
-            draftState={draftState}
-            onDraftStateUsed={() => setDraftState(null)}
-            invoiceSettings={invoiceSettings}
-          />
-        </div>
-      </div>
-    );
+    if (currentView === 'settings') {
+      return <Settings />;
+    }
+    
+    // Default to POS
+    return <Pos 
+      products={products}
+      categories={categories}
+      onAddToCart={addToCart}
+      cart={cart}
+      onUpdateItem={updateCartItem}
+      onRemoveItem={removeFromCart}
+      onClearCart={clearCart}
+      invoiceSettings={invoiceSettings}
+      draftOrders={draftOrders}
+      setDraftOrders={setDraftOrders}
+      showReceipt={showReceipt}
+      setShowReceipt={setShowReceipt}
+      currentReceipt={currentReceipt}
+      setCurrentReceipt={setCurrentReceipt}
+    />;
   };
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Handle main content click to hide sidebar
+  const handleMainContentClick = () => {
+    if (sidebarVisible) {
+      setSidebarVisible(false);
+    }
+  };
+
   return (
     <ThemeProvider>
       <div className="app">
-        <Sidebar onNavigate={handleNavigation} currentView={currentView} />
-        <div className="main-content">
+        <Sidebar 
+          onNavigate={handleNavigation} 
+          currentView={currentView} 
+          isVisible={sidebarVisible}
+          onToggle={() => setSidebarVisible(!sidebarVisible)}
+        />
+        <div className="main-content" onClick={handleMainContentClick}>
           <Header 
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
             onRestoreDraft={handleRestoreDraft}
+            onEditDraft={handleEditDraft}
+            onReturnToCart={handleReturnToCart}
             draftOrders={draftOrders}
             setDraftOrders={setDraftOrders}
+            onSidebarToggle={() => setSidebarVisible(!sidebarVisible)}
+            sidebarVisible={sidebarVisible}
           />
           {renderMainContent()}
         </div>

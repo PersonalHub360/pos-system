@@ -10,6 +10,21 @@
 
 .header-left {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.sidebar-toggle {
+  margin-right: 10px;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.sidebar-toggle:hover {
+  background: #e9ecef;
+  transform: scale(1.1);
 }
 
 .page-title {

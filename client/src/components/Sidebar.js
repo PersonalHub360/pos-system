@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import './Sidebar.css';
 
-const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
+const Sidebar = ({ onNavigate, currentView = 'pos', isVisible = true, onToggle }) => {
   const [expandedMenu, setExpandedMenu] = useState(null);
   
   const menuItems = [
     { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6' },
     { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981' },
     { icon: '📦', label: 'Items', active: currentView === 'items', color: '#F59E0B' },
-    { icon: '📋', label: 'Inventory Manage', active: currentView === 'inventory manage', color: '#EF4444' },
-    { icon: '🍽️', label: 'Table Management', active: currentView === 'table management', color: '#8B5CF6' },
+    { icon: '🛒', label: 'Purchase', active: currentView === 'purchase', color: '#8B5CF6' },
+    { icon: '👥', label: 'HRM System', active: currentView === 'hrm system', color: '#EF4444' },
+    { icon: '💰', label: 'Payroll System', active: currentView === 'payroll system', color: '#059669' },
+    { icon: '🍽️', label: 'Table Management', active: currentView === 'table management', color: '#DC2626' },
     { icon: '📈', label: 'Reports', active: currentView === 'reports', color: '#06B6D4' }
   ];
 
@@ -35,7 +37,7 @@ const Sidebar = ({ onNavigate, currentView = 'pos' }) => {
   };
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${!isVisible ? 'sidebar-hidden' : ''}`}>
       <div className="sidebar-header">
         <div className="logo">
           <span className="logo-icon">🍊</span>

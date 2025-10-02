@@ -16,10 +16,10 @@
   --overlay-color: rgba(0, 0, 0, 0.5);
   
   /* Text Colors */
-  --text-color: #1e293b;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
-  --text-inverse: #ffffff;
+  --text-color: #000000;
+  --text-secondary: #000000;
+  --text-muted: #000000;
+  --text-inverse: #000000;
   
   /* Border Colors */
   --border-color: #e2e8f0;
@@ -30,7 +30,7 @@
   --bg-primary: var(--card-background);
   --bg-secondary: var(--surface-color);
   --bg-tertiary: var(--border-dark);
-  --text-primary: var(--text-color);
+  --text-primary: #000000;
   --accent-primary: var(--primary-color);
   --accent-primary-hover: #5b21b6;
   --accent-secondary: var(--success-color);
@@ -94,44 +94,42 @@
   --overlay-color: rgba(0, 0, 0, 0.7);
   
   /* Text Colors */
-  --text-color: #f1f5f9;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
+  --text-color: #000000;
+  --text-secondary: #000000;
+  --text-muted: #000000;
   --text-inverse: #1e293b;
   
-  /* Border Colors */
-  --border-color: #334155;
-  --border-light: #475569;
-  --border-dark: #1e293b;
-  
   /* Legacy Variables for Compatibility */
-  --bg-primary: var(--card-background);
-  --bg-secondary: var(--surface-color);
-  --bg-tertiary: var(--border-light);
-  --text-primary: var(--text-color);
+  --text-primary: #000000;
   
-  /* Component Specific Dark */
+  /* Border Colors */
+  --border-color: #475569;
+  --border-light: #334155;
+  --border-dark: #64748b;
+  
+  /* Component Specific */
   --header-bg: var(--card-background);
   --sidebar-bg: var(--card-background);
   --card-bg: var(--card-background);
   --modal-bg: var(--card-background);
-  --input-bg: var(--surface-color);
+  --input-bg: var(--card-background);
   --button-bg: var(--surface-color);
   
   /* Gradients */
   --gradient-card: linear-gradient(135deg, #1e293b, #334155);
   --gradient-surface: linear-gradient(135deg, #334155, #475569);
-  --gradient-secondary: var(--gradient-surface);
-  --gradient-modal: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-  
-  /* Enhanced shadows for dark theme */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
-  --shadow-light: var(--shadow-sm);
-  --shadow-medium: var(--shadow-md);
-  --shadow-heavy: var(--shadow-lg);
+}
+
+/* Global Font Weight Override */
+* {
+  font-weight: bold !important;
+}
+
+/* Apply theme to body */
+body {
+  background-color: var(--bg-secondary);
+  color: #000000 !important;
+  font-weight: bold !important;
 }
 
 /* Theme Transition */

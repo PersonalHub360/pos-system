@@ -1,9 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './Items.css';
 
-const Items = () => {
-  const [items, setItems] = useState([]);
-  const [categories, setCategories] = useState([]);
+const Items = ({ 
+  products = [], 
+  setProducts, 
+  categories = [], 
+  setCategories,
+  onRefreshData 
+}) => {
+  // Use props instead of local state for items and categories
+  const items = products;
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,37 +38,41 @@ const Items = () => {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Fetch items and categories on component mount
+  // Use data from props instead of fetching locally
   useEffect(() => {
-    fetchItems();
-    fetchCategories();
-  }, []);
-
-  const fetchItems = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:5000/api/products');
-      const data = await response.json();
-      setItems(data);
-    } catch (error) {
-      console.error('Error fetching items:', error);
-    } finally {
-      setLoading(false);
+    // Data is already available from props, no need to fetch
+    if (onRefreshData && items.length === 0) {
+      onRefreshData();
     }
-  };
+  }, [onRefreshData, items.length]);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('http://localhost:5000/api/categories');
-      const data = await response.json();
-      // Extract category names from objects if they have a 'name' property
-      const categoryNames = data.map(cat => typeof cat === 'object' ? cat.name : cat);
-      setCategories(['All', ...categoryNames]);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setCategories(['All', 'Food', 'Beverages', 'Desserts', 'Snacks']);
-    }
-  };
+  // Remove unused fetchItems function since we use props
+  // const fetchItems = async () => {
+  //   setLoading(true);
+  //   try {
+  //     const response = await fetch('http://localhost:5000/api/products');
+  //     const data = await response.json();
+  //     setProducts(data);
+  //   } catch (error) {
+  //     console.error('Error fetching items:', error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // Remove unused fetchCategories function since we use props
+  // const fetchCategories = async () => {
+  //   try {
+  //     const response = await fetch('http://localhost:5000/api/categories');
+  //     const data = await response.json();
+  //     // Extract category names from objects if they have a 'name' property
+  //     const categoryNames = data.map(cat => typeof cat === 'object' ? cat.name : cat);
+  //     setCategories(['All', ...categoryNames]);
+  //   } catch (error) {
+  //     console.error('Error fetching categories:', error);
+  //     setCategories(['All', 'Food', 'Beverages', 'Desserts', 'Snacks']);
+  //   }
+  // };
 
   const handleAddItem = async (e) => {
     e.preventDefault();
@@ -81,7 +91,8 @@ const Items = () => {
 
       if (response.ok) {
         const addedItem = await response.json();
-        setItems([...items, addedItem]);
+        // Update parent component's products state
+        setProducts([...products, addedItem]);
         setNewItem({
           name: '',
           category: '',
@@ -116,7 +127,8 @@ const Items = () => {
 
       if (response.ok) {
         const updatedItem = await response.json();
-        setItems(items.map(item => item.id === updatedItem.id ? updatedItem : item));
+        // Update parent component's products state
+        setProducts(products.map(item => item.id === updatedItem.id ? updatedItem : item));
         setShowEditModal(false);
         setEditingItem(null);
       }
@@ -133,7 +145,8 @@ const Items = () => {
         });
 
         if (response.ok) {
-          setItems(items.filter(item => item.id !== itemId));
+          // Update parent component's products state
+          setProducts(products.filter(item => item.id !== itemId));
         }
       } catch (error) {
         console.error('Error deleting item:', error);
@@ -327,7 +340,7 @@ const Items = () => {
 
         // Refresh items list if any items were successfully imported
         if (successCount > 0) {
-          fetchItems();
+          onRefreshData();
         }
         
       } catch (error) {
@@ -526,7 +539,7 @@ const Items = () => {
       if (response.ok) {
         setNewCategory('');
         fetchCategoriesForModal();
-        fetchCategories(); // Refresh the main categories list
+        onRefreshData(); // Refresh the main categories list
       } else {
         alert('Error adding category');
       }
@@ -553,7 +566,7 @@ const Items = () => {
       if (response.ok) {
         setEditingCategory(null);
         fetchCategoriesForModal();
-        fetchCategories(); // Refresh the main categories list
+        onRefreshData(); // Refresh the main categories list
       } else {
         alert('Error updating category');
       }
@@ -574,7 +587,7 @@ const Items = () => {
 
       if (response.ok) {
         fetchCategoriesForModal();
-        fetchCategories(); // Refresh the main categories list
+        onRefreshData(); // Refresh the main categories list
       } else {
         alert('Error deleting category');
       }
@@ -626,7 +639,8 @@ const Items = () => {
 
       if (response.ok) {
         const updatedItem = await response.json();
-        setItems(items.map(item => item.id === updatedItem.id ? updatedItem : item));
+        // Update parent component's products state
+        setProducts(products.map(item => item.id === updatedItem.id ? updatedItem : item));
         setSelectedItemForStock('');
         setStockQuantity('');
         setShowStockModal(false);

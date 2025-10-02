@@ -11,6 +11,40 @@
   overflow: hidden;
 }
 
+.editing-indicator {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.editing-icon {
+  font-size: 16px;
+}
+
+.editing-text {
+  flex: 1;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 6px 16px rgba(155, 89, 182, 0.4);
+  }
+}
+
 .order-panel::before {
   content: '';
   position: absolute;

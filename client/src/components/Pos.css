@@ -30,60 +30,73 @@
 
 .datetime-display {
   display: flex;
-  gap: 15px;
+  gap: 20px;
+  align-items: center;
+}
+
+.date-box, .time-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: 12px;
+  min-width: 160px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .date-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 16px;
-  border-radius: 10px;
-  min-width: 120px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
 }
 
 .time-box {
-  display: none;
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
 }
 
-.date-box:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+.date-box:hover, .time-box:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
 
-.date-label {
-  font-size: 0.8rem;
-  font-weight: 500;
+.datetime-icon {
+  font-size: 1.8rem;
   opacity: 0.9;
-  margin-bottom: 4px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.datetime-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.date-label, .time-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.8;
+  margin-bottom: 2px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.time-label {
-  font-size: 0.8rem;
-  font-weight: 500;
-  opacity: 0.9;
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.date-value {
-  font-size: 1rem;
+.date-value, .time-value {
+  font-size: 1.1rem;
   font-weight: 700;
-  color: white;
-  margin-bottom: 8px;
+  color: white !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  line-height: 1.2;
 }
 
-.time-value {
-  font-size: 1rem;
-  font-weight: 700;
-  color: white;
+/* Remove the old time-box display none rule */
+.time-box {
+  display: flex;
 }
+
+
 
 .pos-stats {
   display: flex;
@@ -342,7 +355,7 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 20px;
-  max-height: 300px;
+  max-height: 700px;
 }
 
 .empty-cart {

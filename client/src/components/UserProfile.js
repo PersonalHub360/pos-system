@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import PasswordChange from './PasswordChange';
+import authService from '../utils/auth';
 import './UserProfile.css';
 
 const UserProfile = ({ isOpen, onClose }) => {
@@ -85,11 +86,26 @@ const UserProfile = ({ isOpen, onClose }) => {
     setShowPasswordChange(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm('Are you sure you want to logout?')) {
-      // Handle logout logic here
-      console.log('User logged out');
-      onClose();
+      try {
+        // Use the proper logout method from auth service
+        const result = await authService.logout();
+        
+        if (result.success) {
+          // Close the modal
+          onClose();
+          
+          // Reload the page to reset the application state
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        // Even if there's an error, still clear local data and reload
+        authService.clearAuth();
+        onClose();
+        window.location.reload();
+      }
     }
   };
 

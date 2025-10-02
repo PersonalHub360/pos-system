@@ -6,7 +6,7 @@ import UserProfile from './UserProfile';
 import TableManagement from './TableManagement';
 import './Header.css';
 
-const Header = ({ onNewOrder, onRestoreDraft, draftOrders, setDraftOrders }) => {
+const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draftOrders, setDraftOrders, onSidebarToggle, sidebarVisible }) => {
   const { isDarkMode, toggleDarkMode } = useTheme();
   const [showPrinterSettings, setShowPrinterSettings] = useState(false);
   const [showDraftList, setShowDraftList] = useState(false);
@@ -42,6 +42,9 @@ const Header = ({ onNewOrder, onRestoreDraft, draftOrders, setDraftOrders }) => 
   return (
     <div className="header">
       <div className="header-left">
+        <button className="icon-btn sidebar-toggle" onClick={onSidebarToggle} title={sidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'}>
+          {sidebarVisible ? '✕' : '☰'}
+        </button>
         <h1 className="page-title">Point of Sale (POS)</h1>
         <div className="breadcrumb">
           <span>Dashboard</span>
@@ -91,6 +94,8 @@ const Header = ({ onNewOrder, onRestoreDraft, draftOrders, setDraftOrders }) => 
         isOpen={showDraftList} 
         onClose={() => setShowDraftList(false)}
         onRestoreDraft={onRestoreDraft}
+        onEditDraft={onEditDraft}
+        onReturnToCart={onReturnToCart}
         draftOrders={draftOrders}
         setDraftOrders={setDraftOrders}
       />

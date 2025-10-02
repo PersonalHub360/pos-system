@@ -96,16 +96,30 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       timestamp: new Date().toISOString()
     };
 
-    // Save to localStorage
+    // Get existing drafts
     const existingDrafts = JSON.parse(localStorage.getItem('orderDrafts') || '[]');
-    existingDrafts.push(draftData);
-    localStorage.setItem('orderDrafts', JSON.stringify(existingDrafts));
-
-    alert('Order saved as draft!');
+    
+    // Check if we're editing an existing draft
+    if (draftState && draftState.isEditing && typeof draftState.editingIndex === 'number') {
+      // Update existing draft
+      existingDrafts[draftState.editingIndex] = draftData;
+      localStorage.setItem('orderDrafts', JSON.stringify(existingDrafts));
+      alert('Draft order updated successfully!');
+    } else {
+      // Create new draft
+      existingDrafts.push(draftData);
+      localStorage.setItem('orderDrafts', JSON.stringify(existingDrafts));
+      alert('Order saved as draft!');
+    }
     
     // Clear current order
     onClearCart();
     setSelectedTable('');
+    
+    // Clear draft state if we were editing
+    if (onDraftStateUsed) {
+      onDraftStateUsed();
+    }
   };
 
   const handlePlaceOrder = async (shouldPrint = false) => {
@@ -181,6 +195,12 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
 
   return (
     <div className="order-panel">
+      {draftState && draftState.isEditing && (
+        <div className="editing-indicator">
+          <span className="editing-icon">✏️</span>
+          <span className="editing-text">Editing Draft Order</span>
+        </div>
+      )}
       <div className="order-header">
         <div className="order-selects">
           <select 

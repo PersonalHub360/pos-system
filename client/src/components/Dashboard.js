@@ -108,7 +108,7 @@ const Dashboard = () => {
       }));
       
       if (!orders.length) {
-        setOrders(ordersData.slice(0, 8)); // Get recent orders only if not already set
+        setOrders((ordersData || []).slice(0, 8)); // Get recent orders only if not already set
       }
       
     } catch (error) {
@@ -160,7 +160,7 @@ const Dashboard = () => {
         type: data.type,
         message: `Order #${data.data.id} completed - ${formatCurrency(data.data.total)}`,
         timestamp: new Date(data.timestamp)
-      }, ...prev.slice(0, 4)]);
+      }, ...(prev || []).slice(0, 4)]);
       
       // Refresh dashboard data
       fetchDashboardData();
@@ -507,7 +507,7 @@ const Dashboard = () => {
                   <div key={i} className="skeleton-row loading-shimmer"></div>
                 ))}
               </div>
-            ) : orders.length > 0 ? (
+            ) : orders && orders.length > 0 ? (
               <div className="orders-table">
                 <div className="table-header">
                   <span>Order ID</span>
@@ -521,7 +521,7 @@ const Dashboard = () => {
                     className="table-row animate-metric-card hover-lift interactive-element"
                     style={{ animationDelay: `${1200 + index * 100}ms` }}
                   >
-                    <span className="order-id">#{order._id.slice(-6)}</span>
+                    <span className="order-id">#{(order._id || '').slice(-6)}</span>
                     <span className="customer-name">{order.customerName || 'Walk-in Customer'}</span>
                     <span className="order-total">{formatCurrency(order.total)}</span>
                     <span className={`order-status status-${order.status}`}>
