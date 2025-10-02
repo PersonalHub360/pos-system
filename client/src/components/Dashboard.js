@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import io from 'socket.io-client';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -8,7 +9,13 @@ const Dashboard = () => {
     weeklySales: 0,
     monthlySales: 0,
     estimatedExpenses: 0,
-    stockData: []
+    stockData: [],
+    totalOrders: 0,
+    completedOrders: 0,
+    averageOrderValue: 0,
+    totalRevenue: 0,
+    totalDiscounts: 0,
+    profitMargin: 0
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('today');
@@ -16,93 +23,175 @@ const Dashboard = () => {
   const [customEndDate, setCustomEndDate] = useState('');
   const [animationTrigger, setAnimationTrigger] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [recentActivity, setRecentActivity] = useState([]);
 
-  // Fetch dashboard data
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setLoading(true);
+  // Define fetchDashboardData function
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    
+    try {
+      // Fetch dashboard metrics from new API endpoint
+      const metricsResponse = await fetch('http://localhost:5000/api/dashboard/metrics');
+      if (metricsResponse.ok) {
+        const metricsData = await metricsResponse.json();
+        setMetrics(prev => ({
+          ...prev,
+          ...metricsData
+        }));
+      }
+
+      // Fetch recent orders
+      const recentOrdersResponse = await fetch('http://localhost:5000/api/dashboard/recent-orders');
+      if (recentOrdersResponse.ok) {
+        const recentOrdersData = await recentOrdersResponse.json();
+        setOrders(recentOrdersData);
+      }
+
+      // Fallback to existing orders API if dashboard API is not available
+      const ordersResponse = await fetch('http://localhost:5000/api/orders');
+      const ordersData = await ordersResponse.json();
       
-      try {
-        // Fetch orders data from API
-        const ordersResponse = await fetch('http://localhost:5000/api/orders');
-        const ordersData = await ordersResponse.json();
-        
-        // Calculate date ranges
-        const today = new Date();
-        const yesterday = new Date(Date.now() - 86400000);
-        const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
-        const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-        
-        // Filter orders based on date ranges
-        const todayOrders = ordersData.filter(order => 
-          new Date(order.created_at).toDateString() === today.toDateString()
-        );
-        
-        const yesterdayOrders = ordersData.filter(order => 
-          new Date(order.created_at).toDateString() === yesterday.toDateString()
-        );
-        
-        const weekOrders = ordersData.filter(order => 
-          new Date(order.created_at) >= weekStart
-        );
-        
-        const monthOrders = ordersData.filter(order => 
-          new Date(order.created_at) >= monthStart
-        );
-        
-        // Calculate metrics
-        const dailySales = todayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        const weeklySales = weekOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        const monthlySales = monthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-        const estimatedExpenses = dailySales * 0.25; // 25% of sales as expenses
-        
-        // Mock stock data
-        const stockData = [
+      // Calculate date ranges
+      const today = new Date();
+      const yesterday = new Date(Date.now() - 86400000);
+      const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      
+      // Filter orders based on date ranges
+      const todayOrders = ordersData.filter(order => 
+        new Date(order.created_at).toDateString() === today.toDateString()
+      );
+      
+      const yesterdayOrders = ordersData.filter(order => 
+        new Date(order.created_at).toDateString() === yesterday.toDateString()
+      );
+      
+      const weekOrders = ordersData.filter(order => 
+        new Date(order.created_at) >= weekStart
+      );
+      
+      const monthOrders = ordersData.filter(order => 
+        new Date(order.created_at) >= monthStart
+      );
+      
+      // Calculate metrics from orders data
+      const dailySales = todayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+      const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+      const weeklySales = weekOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+      const monthlySales = monthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
+      const estimatedExpenses = dailySales * 0.25; // 25% of sales as expenses
+      
+      // Calculate discounts and profit margins
+      const totalDiscounts = todayOrders.reduce((sum, order) => sum + (parseFloat(order.discount) || 0), 0);
+      const grossRevenue = dailySales + totalDiscounts;
+      const profitMargin = grossRevenue > 0 ? ((dailySales - estimatedExpenses) / grossRevenue * 100) : 0;
+      
+      // Mock stock data - in real implementation, fetch from inventory API
+      const stockData = [
+        { name: 'Burgers', stock: 45, icon: '🍔' },
+        { name: 'Pizzas', stock: 32, icon: '🍕' },
+        { name: 'Drinks', stock: 18, icon: '🥤' },
+        { name: 'Desserts', stock: 25, icon: '🍰' }
+      ];
+      
+      setMetrics(prev => ({
+        ...prev,
+        dailySales,
+        yesterdaySales,
+        weeklySales,
+        monthlySales,
+        estimatedExpenses,
+        stockData,
+        totalDiscounts,
+        profitMargin: profitMargin.toFixed(2)
+      }));
+      
+      if (!orders.length) {
+        setOrders(ordersData.slice(0, 8)); // Get recent orders only if not already set
+      }
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      // Fallback to mock data
+      setMetrics(prev => ({
+        ...prev,
+        dailySales: 2450.75,
+        yesterdaySales: 2180.50,
+        weeklySales: 15420.30,
+        monthlySales: 68750.25,
+        estimatedExpenses: 612.69,
+        totalDiscounts: 245.50,
+        profitMargin: 25.8,
+        stockData: [
           { name: 'Burgers', stock: 45, icon: '🍔' },
           { name: 'Pizzas', stock: 32, icon: '🍕' },
           { name: 'Drinks', stock: 18, icon: '🥤' },
           { name: 'Desserts', stock: 25, icon: '🍰' }
-        ];
-        
-        setMetrics({
-          dailySales,
-          yesterdaySales,
-          weeklySales,
-          monthlySales,
-          estimatedExpenses,
-          stockData
-        });
-        
-        setOrders(ordersData.slice(0, 8)); // Get recent orders
-        
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-        // Fallback to mock data
-        setMetrics({
-          dailySales: 2450.75,
-          yesterdaySales: 2180.50,
-          weeklySales: 15420.30,
-          monthlySales: 68750.25,
-          estimatedExpenses: 612.69,
-          stockData: [
-            { name: 'Burgers', stock: 45, icon: '🍔' },
-            { name: 'Pizzas', stock: 32, icon: '🍕' },
-            { name: 'Drinks', stock: 18, icon: '🥤' },
-            { name: 'Desserts', stock: 25, icon: '🍰' }
-          ]
-        });
-        
+        ]
+      }));
+      
+      if (!orders.length) {
         setOrders([
           { id: 1, total: 45.50, status: 'completed', timestamp: new Date().toISOString() },
           { id: 2, total: 32.75, status: 'pending', timestamp: new Date().toISOString() },
           { id: 3, total: 67.20, status: 'completed', timestamp: new Date().toISOString() },
         ]);
-      } finally {
-        setLoading(false);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Initialize Socket.IO connection and real-time updates
+  useEffect(() => {
+    const newSocket = io('http://localhost:5000');
+    setSocket(newSocket);
+
+    // Listen for real-time dashboard updates
+    newSocket.on('dashboard:update', (data) => {
+      console.log('Dashboard update received:', data);
+      setAnimationTrigger(true);
+      setTimeout(() => setAnimationTrigger(false), 1000);
+      
+      // Add to recent activity
+      setRecentActivity(prev => [{
+        id: Date.now(),
+        type: data.type,
+        message: `Order #${data.data.id} completed - ${formatCurrency(data.data.total)}`,
+        timestamp: new Date(data.timestamp)
+      }, ...prev.slice(0, 4)]);
+      
+      // Refresh dashboard data
+      fetchDashboardData();
+    });
+
+    // Listen for sales metrics updates
+    newSocket.on('dashboard:sales_update', (salesData) => {
+      console.log('Sales metrics update received:', salesData);
+      setMetrics(prev => ({
+        ...prev,
+        totalOrders: salesData.total_orders,
+        totalRevenue: salesData.total_revenue,
+        averageOrderValue: salesData.average_order_value,
+        completedOrders: salesData.completed_orders
+      }));
+    });
+
+    // Listen for inventory updates
+    newSocket.on('inventory:update', (inventoryData) => {
+      console.log('Inventory update received:', inventoryData);
+      // Refresh dashboard data to get updated stock levels
+      fetchDashboardData();
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
+
+  // Fetch dashboard data on component mount and date range change
+  useEffect(() => {
     fetchDashboardData();
   }, [dateRange]);
 
@@ -122,33 +211,45 @@ const Dashboard = () => {
     setDateRange(range);
   };
 
-  // Enhanced MetricCard with animations
-  const MetricCard = ({ title, value, icon, trend, trendValue, size = 'medium', delay = 0 }) => (
-    <div 
-      className={`metric-card ${size} animate-card`} 
-      style={{ 
-        animationDelay: `${delay}ms`,
-        '--hover-scale': size === 'large' ? '1.05' : '1.02'
-      }}
-    >
-      <div className="metric-header">
-        <span className="metric-icon animate-icon">{icon}</span>
-        {trend && (
-          <div className={`metric-trend ${trend} animate-trend`}>
-            <span>{trend === 'up' ? '↗️' : trend === 'down' ? '↘️' : '➡️'}</span>
-            <span>{trendValue}</span>
+  // Enhanced MetricCard component with animations and color variants
+  const MetricCard = ({ title, value, icon, trend, trendValue, size, color = 'default', delay = 0 }) => {
+    const getCardColor = (colorType) => {
+      const colors = {
+        primary: 'color-primary',
+        success: 'color-success',
+        warning: 'color-warning',
+        danger: 'color-danger',
+        info: 'color-info',
+        default: ''
+      };
+      return colors[colorType] || '';
+    };
+
+    const formatValue = (val) => {
+      if (typeof val === 'string' && val.includes('%')) {
+        return val;
+      }
+      return formatCurrency(val);
+    };
+
+    return (
+      <div 
+        className={`metric-card ${size === 'large' ? 'large' : ''} ${getCardColor(color)} animate-metric-card hover-lift interactive-element`}
+        style={{ animationDelay: `${delay}ms` }}
+      >
+        <div className="metric-header">
+          <div className="metric-icon animate-bounce">{icon}</div>
+          <div className={`metric-trend trend-${trend}`}>
+            {trendValue}
           </div>
-        )}
-      </div>
-      <div className="metric-content">
-        <h3 className="animate-text">{title}</h3>
-        <div className="metric-value animate-value" data-value={value}>
-          {formatCurrency(value)}
+        </div>
+        <div className="metric-content">
+          <h3 className="metric-title">{title}</h3>
+          <div className="metric-value">{formatValue(value)}</div>
         </div>
       </div>
-      <div className="card-glow"></div>
-    </div>
-  );
+    );
+  };
 
   // Enhanced DateFilterButtons with animations
   const DateFilterButtons = () => (
@@ -217,7 +318,7 @@ const Dashboard = () => {
     </div>
   );
 
-  // Primary Metrics Section with staggered animations
+  // Primary Metrics Section with enhanced visual design
   const PrimaryMetricsSection = () => (
     <div className="dashboard-section animate-section" style={{ animationDelay: '200ms' }}>
       <div className="section-header">
@@ -225,7 +326,7 @@ const Dashboard = () => {
           💰 Sales Performance
         </h2>
         <p className="animate-section-subtitle">
-          Track your revenue and growth metrics
+          Track your revenue and growth metrics in real-time
         </p>
       </div>
       <div className="metrics-grid">
@@ -236,6 +337,7 @@ const Dashboard = () => {
           trend={calculateGrowth(metrics.dailySales, metrics.yesterdaySales) > 0 ? 'up' : 'down'}
           trendValue={`${calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}%`}
           size="large"
+          color="primary"
           delay={100}
         />
         <MetricCard
@@ -244,6 +346,7 @@ const Dashboard = () => {
           icon="📊"
           trend="neutral"
           trendValue="Previous day"
+          color="info"
           delay={200}
         />
         <MetricCard
@@ -252,6 +355,7 @@ const Dashboard = () => {
           icon="📈"
           trend="up"
           trendValue="+12.5%"
+          color="success"
           delay={300}
         />
         <MetricCard
@@ -260,6 +364,7 @@ const Dashboard = () => {
           icon="🏆"
           trend="up"
           trendValue="+8.3%"
+          color="primary"
           delay={400}
         />
         <MetricCard
@@ -268,30 +373,34 @@ const Dashboard = () => {
           icon="🔄"
           trend="up"
           trendValue="+18.7%"
+          color="info"
           delay={500}
         />
         <MetricCard
           title="Total Discounts"
-          value={metrics.dailySales * 0.12}
+          value={metrics.totalDiscounts}
           icon="🏷️"
           trend="down"
           trendValue="-3.2%"
+          color="warning"
           delay={600}
         />
         <MetricCard
           title="Net Profit"
-          value={metrics.dailySales - metrics.estimatedExpenses - (metrics.dailySales * 0.12)}
+          value={metrics.dailySales - metrics.estimatedExpenses - metrics.totalDiscounts}
           icon="💰"
           trend="up"
           trendValue="+15.4%"
+          color="success"
           delay={700}
         />
         <MetricCard
           title="Profit Margin"
-          value="24.5%"
+          value={`${metrics.profitMargin}%`}
           icon="💹"
           trend="up"
           trendValue="+2.1%"
+          color="primary"
           delay={800}
         />
         <MetricCard
@@ -300,13 +409,14 @@ const Dashboard = () => {
           icon="💸"
           trend="down"
           trendValue="-5.2%"
+          color="danger"
           delay={900}
         />
       </div>
     </div>
   );
 
-  // Inventory Overview Section
+  // Enhanced Inventory Overview Section with animations
   const InventoryOverviewSection = () => (
     <div className="dashboard-section animate-section" style={{ animationDelay: '600ms' }}>
       <div className="section-header">
@@ -314,14 +424,14 @@ const Dashboard = () => {
           📦 Inventory Overview
         </h2>
         <p className="animate-section-subtitle">
-          Monitor stock levels and inventory status
+          Monitor stock levels and inventory alerts
         </p>
       </div>
       <div className="inventory-grid">
         {metrics.stockData.map((item, index) => (
           <div 
             key={item.name} 
-            className="inventory-card animate-inventory-card"
+            className={`inventory-card ${item.stock < 20 ? 'low-stock' : ''} hover-lift interactive-element animate-inventory-card`}
             style={{ animationDelay: `${(index + 1) * 150}ms` }}
           >
             <div className="inventory-icon animate-inventory-icon">
@@ -330,12 +440,17 @@ const Dashboard = () => {
             <div className="inventory-details">
               <h3 className="animate-inventory-title">{item.name}</h3>
               <span className={`stock-value ${item.stock < 20 ? 'alert animate-alert' : 'animate-stock'}`}>
-                {item.stock}
+                {item.stock} units
               </span>
               <p className="animate-inventory-desc">
                 {item.stock < 20 ? 'Low Stock Alert!' : 'In Stock'}
               </p>
             </div>
+            {item.stock < 20 && (
+              <div className="low-stock-alert animate-pulse">
+                ⚠️ Low Stock Alert
+              </div>
+            )}
             <div className="inventory-pulse"></div>
           </div>
         ))}
@@ -343,67 +458,86 @@ const Dashboard = () => {
     </div>
   );
 
-  // Enhanced Recent Activity Section
+  // Enhanced Recent Activity Section with improved animations
   const RecentActivitySection = () => {
     return (
       <div className="dashboard-section animate-section" style={{ animationDelay: '800ms' }}>
         <div className="section-header">
           <h2 className="animate-section-title">
-            🕒 Recent Activity
+            🔄 Recent Activity
           </h2>
           <p className="animate-section-subtitle">
-            Latest orders and transactions
+            Real-time updates and recent transactions
           </p>
         </div>
-        <div className="recent-orders-table animate-table">
-          {loading ? (
-            <div className="loading-container">
-              {[...Array(5)].map((_, i) => (
-                <div 
-                  key={i} 
-                  className="loading-skeleton animate-skeleton" 
-                  style={{ animationDelay: `${i * 100}ms` }}
-                ></div>
-              ))}
+        
+        <div className="activity-content">
+          <div className="activity-feed">
+            <h3 className="activity-feed-title">Live Activity Feed</h3>
+            <div className="activity-items">
+              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '900ms' }}>
+                <div className="activity-icon">💰</div>
+                <div className="activity-details">
+                  <span className="activity-text">New sale completed</span>
+                  <span className="activity-time">2 minutes ago</span>
+                </div>
+              </div>
+              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '1000ms' }}>
+                <div className="activity-icon">📦</div>
+                <div className="activity-details">
+                  <span className="activity-text">Inventory updated</span>
+                  <span className="activity-time">5 minutes ago</span>
+                </div>
+              </div>
+              <div className="activity-item animate-metric-card hover-lift" style={{ animationDelay: '1100ms' }}>
+                <div className="activity-icon">👤</div>
+                <div className="activity-details">
+                  <span className="activity-text">New customer registered</span>
+                  <span className="activity-time">10 minutes ago</span>
+                </div>
+              </div>
             </div>
-          ) : orders.length > 0 ? (
-            <table>
-              <thead>
-                <tr className="animate-table-header">
-                  <th>Order ID</th>
-                  <th>Total</th>
-                  <th>Status</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order, index) => (
-                  <tr 
-                    key={order.id} 
-                    className="animate-table-row"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <td className="animate-cell">#{order.id}</td>
-                    <td className="animate-cell">{formatCurrency(order.total)}</td>
-                    <td className="animate-cell">
-                      <span className={`status-badge ${order.status} animate-status-badge`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="animate-cell">
-                      {new Date(order.timestamp || order.created_at).toLocaleTimeString()}
-                    </td>
-                  </tr>
+          </div>
+
+          <div className="recent-orders">
+            <h3 className="recent-orders-title">Recent Orders</h3>
+            {loading ? (
+              <div className="loading-skeleton">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="skeleton-row loading-shimmer"></div>
                 ))}
-              </tbody>
-            </table>
-          ) : (
-            <div className="no-orders animate-no-orders">
-              <div className="no-orders-icon animate-no-orders-icon">📋</div>
-              <h3 className="animate-no-orders-title">No Recent Orders</h3>
-              <p className="animate-no-orders-text">Orders will appear here once customers start placing them.</p>
-            </div>
-          )}
+              </div>
+            ) : orders.length > 0 ? (
+              <div className="orders-table">
+                <div className="table-header">
+                  <span>Order ID</span>
+                  <span>Customer</span>
+                  <span>Total</span>
+                  <span>Status</span>
+                </div>
+                {orders.slice(0, 5).map((order, index) => (
+                  <div 
+                    key={order._id} 
+                    className="table-row animate-metric-card hover-lift interactive-element"
+                    style={{ animationDelay: `${1200 + index * 100}ms` }}
+                  >
+                    <span className="order-id">#{order._id.slice(-6)}</span>
+                    <span className="customer-name">{order.customerName || 'Walk-in Customer'}</span>
+                    <span className="order-total">{formatCurrency(order.total)}</span>
+                    <span className={`order-status status-${order.status}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-orders animate-metric-card" style={{ animationDelay: '1200ms' }}>
+                <div className="no-orders-icon">📋</div>
+                <p>No recent orders found</p>
+                <small>Orders will appear here once you start making sales</small>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

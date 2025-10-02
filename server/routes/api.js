@@ -9,6 +9,7 @@ const OrderController = require('../controllers/orderController');
 const TableController = require('../controllers/tableController');
 const InventoryController = require('../controllers/inventoryController');
 const ReportController = require('../controllers/reportController');
+const DashboardController = require('../controllers/dashboardController');
 const AuditController = require('../controllers/auditController');
 const BackupController = require('../controllers/backupController');
 
@@ -25,6 +26,7 @@ function initializeRoutes(db) {
   const tableController = new TableController(db);
   const inventoryController = new InventoryController(db);
   const reportController = new ReportController(db);
+  const dashboardController = new DashboardController(db);
   const auditController = new AuditController(db);
   const backupController = new BackupController(db);
 
@@ -139,6 +141,12 @@ function initializeRoutes(db) {
   router.get('/reports/tables', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => reportController.getTableReport(req, res));
   router.get('/reports/financial', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => reportController.getFinancialReport(req, res));
   router.get('/reports/customers', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => reportController.getCustomerReport(req, res));
+  
+  // Dashboard routes
+  router.get('/dashboard/metrics', authMiddleware.verifyToken, (req, res) => dashboardController.getDashboardMetrics(req, res));
+  router.get('/dashboard/sales-summary', authMiddleware.verifyToken, (req, res) => dashboardController.getSalesSummary(req, res));
+  router.get('/dashboard/recent-orders', authMiddleware.verifyToken, (req, res) => dashboardController.getRecentOrders(req, res));
+  router.get('/dashboard/top-products', authMiddleware.verifyToken, (req, res) => dashboardController.getTopProducts(req, res));
   
   // Report export
   router.get('/reports/export', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => reportController.exportReport(req, res));

@@ -7,6 +7,8 @@ class AuditMiddleware {
 
   // Middleware to log API requests
   logApiRequest() {
+    const auditService = this.auditService;
+    
     return async (req, res, next) => {
       // Store original end function
       const originalEnd = res.end;
@@ -17,7 +19,7 @@ class AuditMiddleware {
         const responseTime = Date.now() - startTime;
         
         // Log API request
-        if (req.user) {
+        if (req.user && auditService) {
           const auditData = {
             table_name: 'api_requests',
             record_id: null,
@@ -40,14 +42,14 @@ class AuditMiddleware {
           };
 
           // Don't await to avoid blocking response
-          this.auditService.logAuditEvent(auditData).catch(err => {
+          auditService.logAuditEvent(auditData).catch(err => {
             console.error('API audit logging error:', err);
           });
         }
 
         // Call original end function
-        originalEnd.call(this, chunk, encoding);
-      }.bind(this);
+        originalEnd.call(res, chunk, encoding);
+      };
 
       next();
     };

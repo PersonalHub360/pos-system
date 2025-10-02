@@ -303,6 +303,14 @@ class OrderController {
         await this.updateTableStatus(existingOrder[0].table_id, 'available');
       }
 
+      // Emit real-time event for order completion
+      if (status === 'completed') {
+        const completedOrder = await this.getOrderById(id);
+        if (global.realTimeSync) {
+          global.realTimeSync.emit('order:completed', completedOrder);
+        }
+      }
+
       res.json({ message: 'Order status updated successfully' });
     } catch (error) {
       console.error('Update order status error:', error);

@@ -510,6 +510,17 @@ app.put('/api/orders/:id', (req, res) => {
       res.status(404).json({ error: 'Order not found' });
       return;
     }
+
+    // Emit real-time event for order completion
+    if (status === 'completed' && global.realTimeSync) {
+      // Get the completed order data
+      db.get('SELECT * FROM orders WHERE id = ?', [id], (err, order) => {
+        if (!err && order) {
+          global.realTimeSync.emit('order:completed', order);
+        }
+      });
+    }
+
     res.json({ message: 'Order updated successfully' });
   });
 });

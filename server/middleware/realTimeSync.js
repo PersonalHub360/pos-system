@@ -207,6 +207,35 @@ class RealTimeSyncManager extends EventEmitter {
     this.on('order:updated', this.handleOrderUpdated.bind(this));
     this.on('order:cancelled', this.handleOrderCancelled.bind(this));
 
+    // Listen for order completion events
+    this.on('order:completed', async (orderData) => {
+      try {
+        // Emit real-time dashboard update
+        this.io.emit('dashboard:update', {
+          type: 'order_completed',
+          data: orderData,
+          timestamp: new Date()
+        });
+
+        // Emit sales metrics update
+        const salesMetrics = await this.calculateSalesMetrics();
+        this.io.emit('dashboard:sales_update', salesMetrics);
+
+        // Emit inventory update if items were sold
+        if (orderData.items && orderData.items.length > 0) {
+          this.io.emit('inventory:update', {
+            type: 'items_sold',
+            items: orderData.items,
+            timestamp: new Date()
+          });
+        }
+
+        console.log('Real-time dashboard updates sent for completed order:', orderData.id);
+      } catch (error) {
+        console.error('Error handling order completion event:', error);
+      }
+    });
+
     // Inventory events
     this.on('inventory:updated', this.handleInventoryUpdated.bind(this));
     this.on('inventory:low_stock', this.handleLowStockAlert.bind(this));
@@ -614,6 +643,38 @@ class RealTimeSyncManager extends EventEmitter {
         
         operations.forEach(operation => {
           operation(handleComplete);
+        });
+      });
+    });
+  }
+
+  /**
+   * Calculate sales metrics for dashboard updates
+   */
+  async calculateSalesMetrics() {
+    return new Promise((resolve, reject) => {
+      const query = `
+        SELECT 
+          COUNT(*) as total_orders,
+          SUM(total_amount) as total_revenue,
+          AVG(total_amount) as average_order_value,
+          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_orders
+        FROM orders 
+        WHERE date(created_at) = date('now')
+      `;
+      
+      this.db.get(query, (err, row) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        
+        resolve({
+          total_orders: row.total_orders || 0,
+          total_revenue: row.total_revenue || 0,
+          average_order_value: row.average_order_value || 0,
+          completed_orders: row.completed_orders || 0,
+          timestamp: new Date().toISOString()
         });
       });
     });

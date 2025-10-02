@@ -1161,25 +1161,25 @@ const InventoryManage = () => {
   };
 
   return (
-    <div className="inventory-manage">
-      <div className="page-header">
+    <div className="inventory-manage-container">
+      <div className="inventory-manage-header">
         <h2>📦 Inventory Management</h2>
-        <div className="page-actions">
-          <div className="section-tabs">
+        <div className="inventory-manage-actions">
+          <div className="inventory-manage-tabs">
             <button
-              className={`tab ${activeSection === 'overview' ? 'active' : ''}`}
+              className={`inventory-manage-tab ${activeSection === 'overview' ? 'active' : ''}`}
               onClick={() => setActiveSection('overview')}
             >
               📊 Overview
             </button>
             <button
-              className={`tab ${activeSection === 'inventory' ? 'active' : ''}`}
+              className={`inventory-manage-tab ${activeSection === 'inventory' ? 'active' : ''}`}
               onClick={() => setActiveSection('inventory')}
             >
               📦 Inventory
             </button>
             <button
-              className={`tab ${activeSection === 'movements' ? 'active' : ''}`}
+              className={`inventory-manage-tab ${activeSection === 'movements' ? 'active' : ''}`}
               onClick={() => setActiveSection('movements')}
             >
               📋 Movements
@@ -1188,7 +1188,7 @@ const InventoryManage = () => {
         </div>
       </div>
 
-      <div className="page-content">
+      <div className="inventory-manage-content">
         {activeSection === 'overview' && renderOverview()}
         {activeSection === 'inventory' && renderInventoryList()}
         {activeSection === 'movements' && renderStockMovements()}
