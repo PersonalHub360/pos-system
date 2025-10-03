@@ -71,6 +71,10 @@ typings/
 .cache
 .parcel-cache
 
+# Additional cache directories
+node_modules/.cache/
+.cache/
+
 # Next.js build output
 .next
 

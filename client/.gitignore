@@ -3,6 +3,12 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Cache directories
+.cache/
+node_modules/.cache/
+.npm/
+.eslintcache
+
 # Testing
 /coverage
 
