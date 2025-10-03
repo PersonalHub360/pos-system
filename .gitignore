@@ -1,25 +1,23 @@
 # Dependencies
 node_modules/
-/.pnp
-.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Testing
-/coverage
+# Production builds
+build/
+dist/
 
-# Production
-/build
-
-# Misc
-.DS_Store
+# Environment variables
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+logs
+*.log
 
 # Runtime data
 pids
@@ -35,7 +33,6 @@ coverage/
 .nyc_output
 
 # Dependency directories
-node_modules/
 jspm_packages/
 
 # Optional npm cache directory
@@ -54,31 +51,32 @@ jspm_packages/
 .yarn-integrity
 
 # dotenv environment variables file
-.env
 .env.test
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
 
-# Next.js build output
+# next.js build output
 .next
 
-# Nuxt.js build / generate output
+# nuxt.js build output
 .nuxt
-dist
 
-# Gatsby files
-.cache/
-public
+# vuepress build output
+.vuepress/dist
 
-# Storybook build outputs
-.out
-.storybook-out
+# Serverless directories
+.serverless
 
-# Temporary folders
-tmp/
-temp/
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
 
 # IDE files
 .vscode/
@@ -96,10 +94,15 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# React specific
-build/
-.eslintcache
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
-# Additional cache directories
-node_modules/.cache/
-.cache/
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+*.tmp
+*.temp
