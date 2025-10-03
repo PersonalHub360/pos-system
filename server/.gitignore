@@ -30,6 +30,7 @@ bower_components
 build/Release
 
 # Dependency directories
+node_modules/
 jspm_packages/
 
 # TypeScript v1 declaration files
@@ -64,16 +65,11 @@ typings/
 .env.test
 .env.local
 .env.development.local
-.env.test.local
 .env.production.local
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
-
-# Additional cache directories
-node_modules/.cache/
-.cache/
 
 # Next.js build output
 .next
@@ -98,39 +94,15 @@ temp/
 logs
 *.log
 
-# Database files (if you want to ignore the SQLite database)
-# *.db
-# *.sqlite
-# *.sqlite3
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Backup files
-*.bak
-*.backup
-*.old
+backups/*.json
+backups/*.json.meta.json
 
-# SSL certificates
-*.pem
-*.key
-*.crt
-*.cert
-
-# Local configuration files
-config/local.json
-config/development.json
-config/production.json
+# Additional cache directories
+node_modules/.cache/
+.cache/
