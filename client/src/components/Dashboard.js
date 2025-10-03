@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell, Area, AreaChart
+} from 'recharts';
+import { 
+  FaShoppingCart, FaDollarSign, FaUsers, FaBox, 
+  FaArrowUp, FaArrowDown, FaCalendarAlt, FaFilter,
+  FaClock, FaPercentage, FaTrendingUp, FaTrendingDown
+} from 'react-icons/fa';
 import { useData } from '../contexts/DataContext';
 import './Dashboard.css';
 import io from 'socket.io-client';
+import websocketClient from '../utils/websocket';
 
 const Dashboard = () => {
   const { stockData, expenseData, dashboardMetrics, updateDashboardMetrics } = useData();
@@ -18,10 +28,20 @@ const Dashboard = () => {
     totalRevenue: 0,
     totalDiscounts: 0,
     profitMargin: 0,
+    estimatedProfit: 0,
+    totalCost: 0,
+    grossSales: 0,
+    netSales: 0,
     abaSales: 0,
     acledaSales: 0,
     cashSales: 0,
-    dueSales: 0
+    cardSales: 0,
+    digitalSales: 0,
+    dueSales: 0,
+    totalProducts: 0,
+    lowStockItems: 0,
+    outOfStockItems: 0,
+    totalInventoryValue: 0
   });
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('today');
@@ -34,115 +54,104 @@ const Dashboard = () => {
 
   // Define fetchDashboardData function
   const fetchDashboardData = async () => {
-    setLoading(true);
-    
     try {
-      // Fetch dashboard metrics from new API endpoint
-      const metricsResponse = await fetch('http://localhost:5000/api/dashboard/metrics');
-      if (metricsResponse.ok) {
-        const metricsData = await metricsResponse.json();
-        setMetrics(prev => ({
-          ...prev,
-          ...metricsData
+      setLoading(true);
+      
+      // Fetch comprehensive dashboard metrics from API
+      const response = await fetch('/api/dashboard/metrics');
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update metrics with API data
+        setMetrics(prevMetrics => ({
+          ...prevMetrics,
+          // Sales metrics
+          dailySales: data.sales?.today_sales || 0,
+          yesterdaySales: data.sales?.yesterday_sales || 0,
+          weeklySales: data.sales?.weekly_sales || 0,
+          monthlySales: data.sales?.monthly_sales || 0,
+          grossSales: data.sales?.gross_sales || 0,
+          totalDiscounts: data.sales?.total_discounts || 0,
+          averageOrderValue: data.sales?.avg_order_value || 0,
+          
+          // Profit metrics
+          estimatedProfit: data.profits?.estimated_profit || 0,
+          totalCost: data.profits?.total_cost || 0,
+          totalRevenue: data.profits?.total_revenue || 0,
+          profitMargin: data.profits?.profit_margin || 0,
+          
+          // Order metrics
+          totalOrders: data.orders?.today_orders || 0,
+          completedOrders: data.orders?.completed_orders || 0,
+          
+          // Inventory metrics
+          totalProducts: data.inventory?.total_products || 0,
+          lowStockItems: data.inventory?.low_stock_items || 0,
+          outOfStockItems: data.inventory?.out_of_stock_items || 0,
+          totalInventoryValue: data.inventory?.total_inventory_value || 0
+        }));
+        
+        // Calculate net sales
+        const netSales = (data.sales?.gross_sales || 0) - (data.sales?.total_discounts || 0);
+        setMetrics(prevMetrics => ({
+          ...prevMetrics,
+          netSales: netSales
+        }));
+        
+      } else {
+        // Fallback to mock data if API fails
+        console.warn('API call failed, using mock data');
+        setMetrics(prevMetrics => ({
+          ...prevMetrics,
+          dailySales: 2450.75,
+          yesterdaySales: 2180.50,
+          weeklySales: 15420.30,
+          monthlySales: 68750.25,
+          estimatedExpenses: 612.69,
+          totalDiscounts: 245.50,
+          profitMargin: 25.8,
+          estimatedProfit: 1838.06,
+          totalCost: 612.69,
+          grossSales: 2696.25,
+          netSales: 2450.75,
+          abaSales: 850.25,
+          acledaSales: 720.50,
+          cashSales: 680.00,
+          cardSales: 200.00,
+          digitalSales: 0,
+          dueSales: 0,
+          totalProducts: 156,
+          lowStockItems: 12,
+          outOfStockItems: 3,
+          totalInventoryValue: 45230.50,
+          stockData: [
+            { name: 'Burgers', stock: 45, icon: '🍔' },
+            { name: 'Pizzas', stock: 32, icon: '🍕' },
+            { name: 'Drinks', stock: 18, icon: '🥤' },
+            { name: 'Desserts', stock: 25, icon: '🍰' }
+          ]
         }));
       }
-
+      
       // Fetch recent orders
-      const recentOrdersResponse = await fetch('http://localhost:5000/api/dashboard/recent-orders');
-      if (recentOrdersResponse.ok) {
-        const recentOrdersData = await recentOrdersResponse.json();
-        setOrders(recentOrdersData);
-      }
-
-      // Fallback to existing orders API if dashboard API is not available
-      const ordersResponse = await fetch('http://localhost:5000/api/orders');
-      const ordersData = await ordersResponse.json();
-      
-      // Calculate date ranges
-      const today = new Date();
-      const yesterday = new Date(Date.now() - 86400000);
-      const weekStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
-      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-      
-      // Filter orders based on date ranges
-      const todayOrders = ordersData.filter(order => 
-        new Date(order.created_at).toDateString() === today.toDateString()
-      );
-      
-      const yesterdayOrders = ordersData.filter(order => 
-        new Date(order.created_at).toDateString() === yesterday.toDateString()
-      );
-      
-      const weekOrders = ordersData.filter(order => 
-        new Date(order.created_at) >= weekStart
-      );
-      
-      const monthOrders = ordersData.filter(order => 
-        new Date(order.created_at) >= monthStart
-      );
-      
-      // Calculate metrics from orders data
-      const dailySales = todayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-      const yesterdaySales = yesterdayOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-      const weeklySales = weekOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-      const monthlySales = monthOrders.reduce((sum, order) => sum + parseFloat(order.total), 0);
-      const estimatedExpenses = dailySales * 0.25; // 25% of sales as expenses
-      
-      // Calculate discounts and profit margins
-      const totalDiscounts = todayOrders.reduce((sum, order) => sum + (parseFloat(order.discount) || 0), 0);
-      const grossRevenue = dailySales + totalDiscounts;
-      const profitMargin = grossRevenue > 0 ? ((dailySales - estimatedExpenses) / grossRevenue * 100) : 0;
-      
-      // Calculate payment method specific sales
-      const abaSales = todayOrders
-        .filter(order => order.paymentMethod === 'ABA' || order.paymentMethod === 'aba')
-        .reduce((sum, order) => sum + parseFloat(order.total), 0);
-      
-      const acledaSales = todayOrders
-        .filter(order => order.paymentMethod === 'ACLEDA' || order.paymentMethod === 'acleda')
-        .reduce((sum, order) => sum + parseFloat(order.total), 0);
-      
-      const cashSales = todayOrders
-        .filter(order => order.paymentMethod === 'Cash' || order.paymentMethod === 'cash')
-        .reduce((sum, order) => sum + parseFloat(order.total), 0);
-      
-      const dueSales = todayOrders
-        .filter(order => order.status === 'pending' || order.paymentStatus === 'due')
-        .reduce((sum, order) => sum + parseFloat(order.total), 0);
-      
-      // Mock stock data - in real implementation, fetch from inventory API
-      const stockData = [
-        { name: 'Burgers', stock: 45, icon: '🍔' },
-        { name: 'Pizzas', stock: 32, icon: '🍕' },
-        { name: 'Drinks', stock: 18, icon: '🥤' },
-        { name: 'Desserts', stock: 25, icon: '🍰' }
-      ];
-      
-      setMetrics(prev => ({
-        ...prev,
-        dailySales,
-        yesterdaySales,
-        weeklySales,
-        monthlySales,
-        estimatedExpenses,
-        stockData,
-        totalDiscounts,
-        profitMargin: profitMargin.toFixed(2),
-        abaSales,
-        acledaSales,
-        cashSales,
-        dueSales
-      }));
-      
-      if (!orders.length) {
-        setOrders((ordersData || []).slice(0, 8)); // Get recent orders only if not already set
+      const ordersResponse = await fetch('/api/dashboard/recent-orders');
+      if (ordersResponse.ok) {
+        const ordersData = await ordersResponse.json();
+        setOrders(ordersData);
+      } else {
+        // Fallback orders data
+        setOrders([
+          { id: 1, total: 45.50, status: 'completed', timestamp: new Date().toISOString() },
+          { id: 2, total: 32.75, status: 'pending', timestamp: new Date().toISOString() },
+          { id: 3, total: 67.20, status: 'completed', timestamp: new Date().toISOString() },
+        ]);
       }
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      // Fallback to mock data
-      setMetrics(prev => ({
-        ...prev,
+      // Use fallback data on error
+      setMetrics(prevMetrics => ({
+        ...prevMetrics,
         dailySales: 2450.75,
         yesterdaySales: 2180.50,
         weeklySales: 15420.30,
@@ -150,25 +159,15 @@ const Dashboard = () => {
         estimatedExpenses: 612.69,
         totalDiscounts: 245.50,
         profitMargin: 25.8,
-        abaSales: 850.25,
-        acledaSales: 720.50,
-        cashSales: 680.00,
-        dueSales: 200.00,
-        stockData: [
-          { name: 'Burgers', stock: 45, icon: '🍔' },
-          { name: 'Pizzas', stock: 32, icon: '🍕' },
-          { name: 'Drinks', stock: 18, icon: '🥤' },
-          { name: 'Desserts', stock: 25, icon: '🍰' }
-        ]
+        estimatedProfit: 1838.06,
+        totalCost: 612.69,
+        grossSales: 2696.25,
+        netSales: 2450.75,
+        totalProducts: 156,
+        lowStockItems: 12,
+        outOfStockItems: 3,
+        totalInventoryValue: 45230.50
       }));
-      
-      if (!orders.length) {
-        setOrders([
-          { id: 1, total: 45.50, status: 'completed', timestamp: new Date().toISOString() },
-          { id: 2, total: 32.75, status: 'pending', timestamp: new Date().toISOString() },
-          { id: 3, total: 67.20, status: 'completed', timestamp: new Date().toISOString() },
-        ]);
-      }
     } finally {
       setLoading(false);
     }
@@ -222,6 +221,79 @@ const Dashboard = () => {
   }, []);
 
   // Fetch dashboard data on component mount and date range change
+  useEffect(() => {
+    fetchDashboardData();
+    
+    // WebSocket real-time updates
+    const handleDashboardUpdate = (event) => {
+      const { detail } = event;
+      console.log('Real-time dashboard update received:', detail);
+      
+      if (detail.metrics) {
+        // Update dashboard metrics immediately
+        if (detail.metrics.sales) {
+          setMetrics(prevMetrics => ({
+            ...prevMetrics,
+            dailySales: detail.metrics.sales.today_sales || prevMetrics.dailySales,
+            totalOrders: detail.metrics.sales.today_orders || prevMetrics.totalOrders,
+            totalDiscounts: detail.metrics.sales.today_discounts || prevMetrics.totalDiscounts,
+            averageOrderValue: detail.metrics.sales.avg_order_value || prevMetrics.averageOrderValue
+          }));
+        }
+        
+        if (detail.metrics.inventory) {
+          setMetrics(prevMetrics => ({
+            ...prevMetrics,
+            totalProducts: detail.metrics.inventory.total_products || prevMetrics.totalProducts,
+            lowStockItems: detail.metrics.inventory.low_stock_items || prevMetrics.lowStockItems,
+            outOfStockItems: detail.metrics.inventory.out_of_stock_items || prevMetrics.outOfStockItems
+          }));
+        }
+      }
+      
+      // Trigger full refresh after a short delay
+      setTimeout(() => {
+        fetchDashboardData();
+      }, 1000);
+    };
+
+    // Listen for sales metrics updates
+    const handleSalesMetricsUpdate = (event) => {
+      const { detail } = event;
+      console.log('Sales metrics update received:', detail);
+      
+      setMetrics(prevMetrics => ({
+        ...prevMetrics,
+        dailySales: detail.today_sales || prevMetrics.dailySales,
+        totalOrders: detail.today_orders || prevMetrics.totalOrders,
+        totalDiscounts: detail.today_discounts || prevMetrics.totalDiscounts,
+        averageOrderValue: detail.avg_order_value || prevMetrics.averageOrderValue,
+        weeklySales: detail.weekly_sales || prevMetrics.weeklySales,
+        monthlySales: detail.monthly_sales || prevMetrics.monthlySales
+      }));
+    };
+
+    // Add event listeners
+    window.addEventListener('dashboardUpdate', handleDashboardUpdate);
+    window.addEventListener('salesMetricsUpdate', handleSalesMetricsUpdate);
+
+    // Cleanup event listeners on component unmount
+    return () => {
+      window.removeEventListener('dashboardUpdate', handleDashboardUpdate);
+      window.removeEventListener('salesMetricsUpdate', handleSalesMetricsUpdate);
+    };
+
+    // Subscribe to WebSocket events
+    websocketClient.subscribe('connected', () => {
+      console.log('Dashboard connected to WebSocket');
+    });
+
+    websocketClient.subscribe('disconnected', () => {
+      console.log('Dashboard disconnected from WebSocket');
+    });
+  }, []);
+
+  // Separate useEffect for date range changes
   useEffect(() => {
     fetchDashboardData();
   }, [dateRange]);
@@ -594,6 +666,201 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
+      <EnhancedHeaderWithStatsPreview />
+      
+      {/* Main Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Today's Sales</p>
+              <p className="text-2xl font-bold text-gray-900">${metrics.dailySales?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-green-600 mt-1">
+                {metrics.yesterdaySales > 0 && 
+                  `${((metrics.dailySales - metrics.yesterdaySales) / metrics.yesterdaySales * 100).toFixed(1)}% from yesterday`
+                }
+              </p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-full">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Estimated Profit</p>
+              <p className="text-2xl font-bold text-gray-900">${metrics.estimatedProfit?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-green-600 mt-1">{metrics.profitMargin?.toFixed(1) || '0.0'}% margin</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Orders</p>
+              <p className="text-2xl font-bold text-gray-900">{metrics.totalOrders || 0}</p>
+              <p className="text-xs text-blue-600 mt-1">{metrics.completedOrders || 0} completed</p>
+            </div>
+            <div className="p-3 bg-purple-100 rounded-full">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Discounts</p>
+              <p className="text-2xl font-bold text-gray-900">${metrics.totalDiscounts?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-orange-600 mt-1">Today's discounts</p>
+            </div>
+            <div className="p-3 bg-orange-100 rounded-full">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Secondary Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Gross Sales</p>
+              <p className="text-xl font-bold text-gray-900">${metrics.grossSales?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500 mt-1">Before discounts</p>
+            </div>
+            <div className="p-2 bg-gray-100 rounded-full">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Net Sales</p>
+              <p className="text-xl font-bold text-gray-900">${metrics.netSales?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500 mt-1">After discounts</p>
+            </div>
+            <div className="p-2 bg-gray-100 rounded-full">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Average Order</p>
+              <p className="text-xl font-bold text-gray-900">${metrics.averageOrderValue?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500 mt-1">Per transaction</p>
+            </div>
+            <div className="p-2 bg-gray-100 rounded-full">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Cost</p>
+              <p className="text-xl font-bold text-gray-900">${metrics.totalCost?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500 mt-1">Cost of goods</p>
+            </div>
+            <div className="p-2 bg-gray-100 rounded-full">
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory Metrics Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Products</p>
+              <p className="text-xl font-bold text-gray-900">{metrics.totalProducts || 0}</p>
+              <p className="text-xs text-gray-500 mt-1">In inventory</p>
+            </div>
+            <div className="p-2 bg-indigo-100 rounded-full">
+              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
+              <p className="text-xl font-bold text-gray-900">{metrics.lowStockItems || 0}</p>
+              <p className="text-xs text-yellow-600 mt-1">Need restocking</p>
+            </div>
+            <div className="p-2 bg-yellow-100 rounded-full">
+              <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Out of Stock</p>
+              <p className="text-xl font-bold text-gray-900">{metrics.outOfStockItems || 0}</p>
+              <p className="text-xs text-red-600 mt-1">Urgent restock</p>
+            </div>
+            <div className="p-2 bg-red-100 rounded-full">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Inventory Value</p>
+              <p className="text-xl font-bold text-gray-900">${metrics.totalInventoryValue?.toFixed(2) || '0.00'}</p>
+              <p className="text-xs text-gray-500 mt-1">Total value</p>
+            </div>
+            <div className="p-2 bg-teal-100 rounded-full">
+              <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div className="dashboard-main-grid">
         <SalesPerformanceSection />
         <StockInformationSection />

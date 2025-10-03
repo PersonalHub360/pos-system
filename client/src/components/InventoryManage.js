@@ -47,6 +47,41 @@ const InventoryManage = () => {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
+  // Real-time inventory update handler
+  const handleInventoryUpdate = useCallback((event) => {
+    const updateData = event.detail;
+    console.log('Inventory update received:', updateData);
+    
+    if (updateData.type === 'items_sold' && updateData.items) {
+      // Update inventory data based on sold items
+      setInventoryData(prevData => 
+        prevData.map(item => {
+          const soldItem = updateData.items.find(sold => sold.product_id === item.id);
+          if (soldItem) {
+            const newStock = Math.max(0, item.currentStock - soldItem.quantity);
+            return {
+              ...item,
+              currentStock: newStock,
+              status: newStock === 0 ? 'Out of Stock' : 
+                     newStock <= item.minStock ? 'Low Stock' : 'In Stock'
+            };
+          }
+          return item;
+        })
+      );
+      setLastUpdate(new Date());
+    }
+  }, []);
+
+  useEffect(() => {
+    // Add event listener for real-time inventory updates
+    window.addEventListener('inventoryUpdate', handleInventoryUpdate);
+    
+    return () => {
+      window.removeEventListener('inventoryUpdate', handleInventoryUpdate);
+    };
+  }, [handleInventoryUpdate]);
+
   // API functions
   const fetchInventoryData = useCallback(async () => {
     try {

@@ -28,21 +28,20 @@ class RealTimeSyncManager extends EventEmitter {
         SET current_stock = current_stock - NEW.quantity,
             updated_at = datetime('now')
         WHERE product_id = NEW.product_id 
-        AND is_trackable = 1;
+        AND current_stock IS NOT NULL;
         
         INSERT INTO stock_movements (
-          product_id, movement_type, quantity_change, 
-          previous_stock, new_stock, reference_id, reference_type,
+          product_id, movement_type, quantity, 
+          reference_id, reference_type,
           notes, created_at
         )
         SELECT 
-          NEW.product_id, 'sale', -NEW.quantity,
-          i.current_stock + NEW.quantity, i.current_stock,
+          NEW.product_id, 'sale', NEW.quantity,
           NEW.order_id, 'order',
           'Automatic stock reduction from order #' || NEW.order_id,
           datetime('now')
         FROM inventory i 
-        WHERE i.product_id = NEW.product_id AND i.is_trackable = 1;
+        WHERE i.product_id = NEW.product_id AND i.current_stock IS NOT NULL;
       END;
       `,
 
@@ -63,54 +62,25 @@ class RealTimeSyncManager extends EventEmitter {
           SELECT DISTINCT oi.product_id 
           FROM order_items oi 
           WHERE oi.order_id = NEW.id
-        ) AND is_trackable = 1;
+        ) AND current_stock IS NOT NULL;
         
         INSERT INTO stock_movements (
-          product_id, movement_type, quantity_change, 
-          previous_stock, new_stock, reference_id, reference_type,
+          product_id, movement_type, quantity, 
+          reference_id, reference_type,
           notes, created_at
         )
         SELECT 
           oi.product_id, 'return', oi.quantity,
-          i.current_stock - oi.quantity, i.current_stock,
           NEW.id, 'order_cancel',
           'Automatic stock restoration from cancelled order #' || NEW.id,
           datetime('now')
         FROM order_items oi
         JOIN inventory i ON i.product_id = oi.product_id
-        WHERE oi.order_id = NEW.id AND i.is_trackable = 1;
+        WHERE oi.order_id = NEW.id AND i.current_stock IS NOT NULL;
       END;
       `,
 
-      // Update table status when order is created/completed
-      `
-      CREATE TRIGGER IF NOT EXISTS update_table_status_on_order
-      AFTER INSERT ON orders
-      WHEN NEW.table_id IS NOT NULL AND NEW.order_type = 'dine_in'
-      BEGIN
-        UPDATE tables 
-        SET status = 'occupied', updated_at = datetime('now')
-        WHERE id = NEW.table_id;
-      END;
-      `,
-
-      `
-      CREATE TRIGGER IF NOT EXISTS free_table_on_order_complete
-      AFTER UPDATE OF status ON orders
-      WHEN NEW.status = 'completed' AND OLD.status != 'completed' 
-           AND NEW.table_id IS NOT NULL AND NEW.order_type = 'dine_in'
-      BEGIN
-        UPDATE tables 
-        SET status = 'available', updated_at = datetime('now')
-        WHERE id = NEW.table_id
-        AND NOT EXISTS (
-          SELECT 1 FROM orders o 
-          WHERE o.table_id = NEW.table_id 
-          AND o.status IN ('pending', 'preparing', 'ready') 
-          AND o.id != NEW.id
-        );
-      END;
-      `,
+      // Note: Table management triggers removed as orders table doesn't have table_id column
 
       // Update daily sales summary
       `
@@ -119,15 +89,12 @@ class RealTimeSyncManager extends EventEmitter {
       WHEN NEW.status = 'completed' AND OLD.status != 'completed'
       BEGIN
         INSERT OR REPLACE INTO daily_sales_summary (
-          date, total_orders, total_revenue, total_items_sold, 
-          average_order_value, created_at, updated_at
+          date, total_orders, total_revenue, created_at, updated_at
         )
         SELECT 
           date(NEW.created_at) as date,
           COUNT(*) as total_orders,
-          SUM(total_amount) as total_revenue,
-          SUM((SELECT SUM(quantity) FROM order_items WHERE order_id = o.id)) as total_items_sold,
-          AVG(total_amount) as average_order_value,
+          SUM(total) as total_revenue,
           datetime('now') as created_at,
           datetime('now') as updated_at
         FROM orders o
@@ -173,11 +140,11 @@ class RealTimeSyncManager extends EventEmitter {
           'users', NEW.id, 'UPDATE',
           json_object(
             'username', OLD.username, 'email', OLD.email, 'role', OLD.role,
-            'is_active', OLD.is_active
+            'status', OLD.status
           ),
           json_object(
             'username', NEW.username, 'email', NEW.email, 'role', NEW.role,
-            'is_active', NEW.is_active
+            'status', NEW.status
           ),
           NULL,
           datetime('now')
@@ -199,8 +166,82 @@ class RealTimeSyncManager extends EventEmitter {
   }
 
   /**
-   * Setup event listeners for real-time synchronization
+   * Calculate real-time sales metrics
    */
+  async calculateSalesMetrics() {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      
+      const salesQuery = `
+        SELECT 
+          SUM(CASE WHEN DATE(created_at) = ? AND order_status = 'completed' THEN total ELSE 0 END) as today_sales,
+          COUNT(CASE WHEN DATE(created_at) = ? AND order_status = 'completed' THEN 1 END) as today_orders,
+          SUM(CASE WHEN DATE(created_at) = ? AND order_status = 'completed' THEN discount_amount ELSE 0 END) as today_discounts,
+          AVG(CASE WHEN DATE(created_at) = ? AND order_status = 'completed' THEN total END) as avg_order_value,
+          SUM(CASE WHEN DATE(created_at) >= DATE('now', '-7 days') AND order_status = 'completed' THEN total ELSE 0 END) as weekly_sales,
+          SUM(CASE WHEN DATE(created_at) >= DATE('now', 'start of month') AND order_status = 'completed' THEN total ELSE 0 END) as monthly_sales
+        FROM orders
+      `;
+
+      const result = await this.executeQuery(salesQuery, [today, today, today, today]);
+      
+      return result[0] || {
+        today_sales: 0,
+        today_orders: 0,
+        today_discounts: 0,
+        avg_order_value: 0,
+        weekly_sales: 0,
+        monthly_sales: 0
+      };
+    } catch (error) {
+      console.error('Error calculating sales metrics:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Calculate inventory metrics
+   */
+  async calculateInventoryMetrics() {
+    try {
+      const inventoryQuery = `
+        SELECT 
+          COUNT(*) as total_products,
+          SUM(CASE WHEN current_stock <= min_stock THEN 1 ELSE 0 END) as low_stock_items,
+          SUM(CASE WHEN current_stock = 0 THEN 1 ELSE 0 END) as out_of_stock_items,
+          SUM(current_stock * (SELECT price FROM products WHERE id = inventory.product_id)) as total_inventory_value
+        FROM inventory 
+        WHERE is_trackable = 1
+      `;
+
+      const result = await this.executeQuery(inventoryQuery);
+      
+      return result[0] || {
+        total_products: 0,
+        low_stock_items: 0,
+        out_of_stock_items: 0,
+        total_inventory_value: 0
+      };
+    } catch (error) {
+      console.error('Error calculating inventory metrics:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Database query helper
+   */
+  executeQuery(query, params = []) {
+    return new Promise((resolve, reject) => {
+      this.db.all(query, params, (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows || []);
+        }
+      });
+    });
+  }
   setupEventListeners() {
     // Order events
     this.on('order:created', this.handleOrderCreated.bind(this));
@@ -210,22 +251,37 @@ class RealTimeSyncManager extends EventEmitter {
     // Listen for order completion events
     this.on('order:completed', async (orderData) => {
       try {
-        // Emit real-time dashboard update
+        // Calculate updated metrics
+        const salesMetrics = await this.calculateSalesMetrics();
+        const inventoryMetrics = await this.calculateInventoryMetrics();
+        
+        // Emit real-time dashboard update with comprehensive metrics
         this.io.emit('dashboard:update', {
           type: 'order_completed',
           data: orderData,
+          metrics: {
+            sales: salesMetrics,
+            inventory: inventoryMetrics
+          },
           timestamp: new Date()
         });
 
         // Emit sales metrics update
-        const salesMetrics = await this.calculateSalesMetrics();
-        this.io.emit('dashboard:sales_update', salesMetrics);
+        this.io.emit('dashboard:sales_update', {
+          ...salesMetrics,
+          last_order: orderData,
+          timestamp: new Date()
+        });
 
         // Emit inventory update if items were sold
         if (orderData.items && orderData.items.length > 0) {
           this.io.emit('inventory:update', {
             type: 'items_sold',
-            items: orderData.items,
+            items: orderData.items.map(item => ({
+              product_id: item.product_id,
+              quantity_sold: item.quantity,
+              timestamp: new Date()
+            })),
             timestamp: new Date()
           });
         }
@@ -269,14 +325,7 @@ class RealTimeSyncManager extends EventEmitter {
       // Check for low stock items
       await this.checkLowStockItems(orderData.items);
 
-      // Update table status if dine-in order
-      if (orderData.table_id && orderData.order_type === 'dine_in') {
-        this.emit('table:status_changed', {
-          table_id: orderData.table_id,
-          status: 'occupied',
-          order_id: orderData.id
-        });
-      }
+      // Note: Table management removed as orders table doesn't have table_id column
 
       console.log(`Order ${orderData.id} created and synchronized`);
     } catch (error) {
@@ -293,10 +342,7 @@ class RealTimeSyncManager extends EventEmitter {
         });
       }
 
-      // If order is completed, free up the table
-      if (orderData.status === 'completed' && orderData.table_id) {
-        await this.checkAndFreeTable(orderData.table_id, orderData.id);
-      }
+      // Note: Table management removed as orders table doesn't have table_id column
 
       console.log(`Order ${orderData.id} updated and synchronized`);
     } catch (error) {
@@ -313,10 +359,7 @@ class RealTimeSyncManager extends EventEmitter {
         });
       }
 
-      // Free up the table if it was a dine-in order
-      if (orderData.table_id && orderData.order_type === 'dine_in') {
-        await this.checkAndFreeTable(orderData.table_id, orderData.id);
-      }
+      // Note: Table management removed as orders table doesn't have table_id column
 
       console.log(`Order ${orderData.id} cancelled and synchronized`);
     } catch (error) {
@@ -480,37 +523,7 @@ class RealTimeSyncManager extends EventEmitter {
     }
   }
 
-  async checkAndFreeTable(tableId, orderId) {
-    const query = `
-      SELECT COUNT(*) as active_orders
-      FROM orders 
-      WHERE table_id = ? AND status IN ('pending', 'preparing', 'ready') AND id != ?
-    `;
-    
-    this.db.get(query, [tableId, orderId], (err, row) => {
-      if (err) {
-        console.error('Error checking table orders:', err);
-        return;
-      }
-      
-      if (row && row.active_orders === 0) {
-        this.db.run(
-          'UPDATE tables SET status = ?, updated_at = datetime("now") WHERE id = ?',
-          ['available', tableId],
-          (err) => {
-            if (err) {
-              console.error('Error freeing table:', err);
-            } else {
-              this.emit('table:status_changed', {
-                table_id: tableId,
-                status: 'available'
-              });
-            }
-          }
-        );
-      }
-    });
-  }
+  // Note: checkAndFreeTable method removed as orders table doesn't have table_id column
 
   /**
    * Manual synchronization methods
@@ -521,7 +534,7 @@ class RealTimeSyncManager extends EventEmitter {
         SELECT i.*, p.name as product_name
         FROM inventory i
         JOIN products p ON i.product_id = p.id
-        WHERE i.is_trackable = 1
+        WHERE i.current_stock IS NOT NULL
       `;
       
       this.db.all(query, (err, rows) => {

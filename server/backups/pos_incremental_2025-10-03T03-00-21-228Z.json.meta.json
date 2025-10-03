@@ -1,0 +1,10 @@
+{
+  "filename": "pos_incremental_2025-10-03T03-00-21-228Z.json",
+  "path": "C:\\Users\\mozam\\Downloads\\pos\\pos-system\\pos-system-1\\server\\backups\\pos_incremental_2025-10-03T03-00-21-228Z.json",
+  "description": "Scheduled hourly backup",
+  "created_at": "2025-10-03T03:00:21.339Z",
+  "size": 168,
+  "type": "incremental",
+  "since": "2025-10-03T02:00:21.214Z",
+  "records_count": 0
+}

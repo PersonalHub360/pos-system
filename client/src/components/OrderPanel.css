@@ -271,7 +271,7 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #556B2F 0%, #6B8E23 100%);
 }
 
 .order-summary::after {
@@ -354,7 +354,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, #556B2F 0%, #6B8E23 100%);
 }
 
 .summary-row.total span:first-child {

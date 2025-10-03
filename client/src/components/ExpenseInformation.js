@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useData } from '../contexts/DataContext';
+import AddExpense from './AddExpense';
 import './ExpenseInformation.css';
 
 const ExpenseInformation = () => {
@@ -7,6 +8,7 @@ const ExpenseInformation = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
+  const [showAddExpense, setShowAddExpense] = useState(false);
 
   useEffect(() => {
     // Data is already loaded from context, just set loading to false
@@ -40,6 +42,70 @@ const ExpenseInformation = () => {
     return diffDays;
   };
 
+  // Import file handlers
+  const handleExpenseFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csv = e.target.result;
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        
+        const importedExpenses = [];
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            const values = lines[i].split(',');
+            const expense = {
+              id: Date.now() + i,
+              description: values[0]?.trim() || '',
+              category: values[1]?.trim() || '',
+              vendor: values[2]?.trim() || '',
+              amount: parseFloat(values[3]) || 0,
+              date: values[4]?.trim() || new Date().toISOString().split('T')[0],
+              status: values[5]?.trim() || 'Pending'
+            };
+            importedExpenses.push(expense);
+          }
+        }
+        
+        if (importedExpenses.length > 0) {
+          // Update expense data with imported expenses
+          const updatedExpenseData = {
+            ...expenseData,
+            recentExpenses: [...expenseData.recentExpenses, ...importedExpenses],
+            totalExpenses: expenseData.totalExpenses + importedExpenses.reduce((sum, exp) => sum + exp.amount, 0)
+          };
+          updateExpenseData(updatedExpenseData);
+          alert(`Successfully imported ${importedExpenses.length} expenses!`);
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please select a valid CSV file.');
+    }
+    event.target.value = '';
+  };
+
+  const downloadExpenseSample = () => {
+    const sampleData = [
+      ['Description', 'Category', 'Vendor', 'Amount', 'Date', 'Status'],
+      ['Office Rent Payment', 'Rent & Utilities', 'Property Management Co', '2500.00', '2024-01-15', 'Paid'],
+      ['Marketing Campaign', 'Marketing', 'Digital Agency', '1200.00', '2024-01-16', 'Pending'],
+      ['Office Supplies', 'Office Expenses', 'Office Depot', '350.75', '2024-01-17', 'Paid'],
+      ['Software License', 'Technology', 'Microsoft', '299.99', '2024-01-18', 'Pending']
+    ];
+    
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'expense_sample.csv';
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   if (loading) {
     return (
       <div className="expense-information-loading">
@@ -71,9 +137,33 @@ const ExpenseInformation = () => {
             <span>📊</span>
             Generate Report
           </button>
-          <button className="expense-btn secondary">
+          <button 
+            className="expense-btn secondary"
+            onClick={() => setShowAddExpense(true)}
+          >
             <span>➕</span>
             Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Import Section */}
+      <div className="import-section">
+        <div className="import-controls">
+          <div className="file-input-wrapper">
+            <input
+              type="file"
+              id="expense-file-input"
+              accept=".csv"
+              onChange={handleExpenseFileImport}
+              style={{ display: 'none' }}
+            />
+            <label htmlFor="expense-file-input" className="file-input-label">
+              📁 Import Expenses (CSV)
+            </label>
+          </div>
+          <button onClick={downloadExpenseSample} className="download-sample-btn">
+            📥 Download Sample CSV
           </button>
         </div>
       </div>
@@ -302,6 +392,17 @@ const ExpenseInformation = () => {
           </div>
         )}
       </div>
+
+      {/* Add Expense Modal */}
+      {showAddExpense && (
+        <AddExpense
+          onClose={() => setShowAddExpense(false)}
+          onExpenseAdded={(expense) => {
+            console.log('New expense added:', expense);
+            setShowAddExpense(false);
+          }}
+        />
+      )}
     </div>
   );
 };

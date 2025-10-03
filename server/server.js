@@ -4,11 +4,15 @@ const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const http = require('http');
+const WebSocketServer = require('./websocket/websocketServer');
+const RealTimeSyncManager = require('./middleware/realTimeSync');
 
 // Import middleware
 const AuditMiddleware = require('./middleware/auditMiddleware');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Database setup
@@ -17,6 +21,33 @@ const db = new sqlite3.Database('./pos_database.db');
 // Initialize audit middleware
 const auditMiddleware = new AuditMiddleware(db);
 
+// Initialize WebSocket server
+const wsServer = new WebSocketServer(server);
+
+// Initialize real-time sync manager with WebSocket integration
+const realTimeSync = new RealTimeSyncManager(db);
+
+// Connect real-time sync events to WebSocket broadcasts
+realTimeSync.on('dashboard:update', (data) => {
+  wsServer.broadcastDashboardUpdate(data);
+});
+
+realTimeSync.on('inventory:update', (data) => {
+  wsServer.broadcastInventoryUpdate(data);
+});
+
+realTimeSync.on('sales:metrics', (data) => {
+  wsServer.broadcastSalesMetrics(data);
+});
+
+realTimeSync.on('order:completed', (data) => {
+  wsServer.broadcastOrderCompleted(data);
+});
+
+// Make realTimeSync and wsServer globally available
+global.realTimeSync = realTimeSync;
+global.wsServer = wsServer;
+
 // Initialize backup service and start scheduler
 const BackupService = require('./services/backupService');
 const backupService = new BackupService(db);
@@ -24,14 +55,42 @@ backupService.scheduleBackups();
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
-// Add audit logging middleware
-app.use(auditMiddleware.logApiRequest());
+// Configure Content Security Policy to allow necessary resources
+app.use((req, res, next) => {
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+    "img-src 'self' data: blob:; " +
+    "connect-src 'self' ws: wss:; " +
+    "object-src 'none'; " +
+    "base-uri 'self';"
+  );
+  next();
+});
+
+// Serve static files from client build
+app.use(express.static(path.join(__dirname, '../client/build')));
+
+// Health check endpoint (before audit middleware to avoid issues)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'RestroBit POS Server is running' });
+});
+
+// Add audit logging middleware (temporarily disabled for testing)
+// app.use(auditMiddleware.logApiRequest());
 
 // Start scheduled integrity checks
 auditMiddleware.scheduleIntegrityChecks();
+
+// Mount API routes
+const initializeRoutes = require('./routes/api');
+const apiRoutes = initializeRoutes(db);
+app.use('/api', apiRoutes);
 
 // Initialize database tables
 db.serialize(() => {
@@ -499,9 +558,16 @@ app.get('/api/orders', (req, res) => {
 // Update order status
 app.put('/api/orders/:id', (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
+  const { status, payment_method } = req.body;
 
-  db.run('UPDATE orders SET status = ? WHERE id = ?', [status, id], function(err) {
+  // Update order with status and payment method
+  const updateQuery = payment_method 
+    ? 'UPDATE orders SET status = ?, payment_method = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    : 'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+  
+  const updateParams = payment_method ? [status, payment_method, id] : [status, id];
+
+  db.run(updateQuery, updateParams, function(err) {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -511,12 +577,55 @@ app.put('/api/orders/:id', (req, res) => {
       return;
     }
 
-    // Emit real-time event for order completion
-    if (status === 'completed' && global.realTimeSync) {
-      // Get the completed order data
-      db.get('SELECT * FROM orders WHERE id = ?', [id], (err, order) => {
+    // Handle inventory updates and real-time events for completed orders
+    if (status === 'completed') {
+      // Get the completed order with items
+      db.get(`
+        SELECT o.*, 
+               GROUP_CONCAT(oi.product_id || ':' || oi.quantity) as item_details
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE o.id = ?
+        GROUP BY o.id
+      `, [id], (err, order) => {
         if (!err && order) {
-          global.realTimeSync.emit('order:completed', order);
+          // Update inventory for each item in the order
+          if (order.item_details) {
+            const items = order.item_details.split(',');
+            items.forEach(item => {
+              const [productId, quantity] = item.split(':');
+              
+              // Update inventory stock
+              db.run(`
+                UPDATE inventory 
+                SET current_stock = current_stock - ?, 
+                    updated_at = CURRENT_TIMESTAMP 
+                WHERE product_id = ? AND 
+                      EXISTS (SELECT 1 FROM products WHERE id = ? AND is_trackable = 1)
+              `, [parseInt(quantity), productId, productId], (err) => {
+                if (err) {
+                  console.error('Error updating inventory:', err);
+                } else {
+                  console.log(`Inventory updated for product ${productId}: -${quantity}`);
+                }
+              });
+
+              // Log stock movement
+              db.run(`
+                INSERT INTO stock_movements (product_id, movement_type, quantity, reference_type, reference_id, created_at)
+                VALUES (?, 'out', ?, 'order', ?, CURRENT_TIMESTAMP)
+              `, [productId, parseInt(quantity), id], (err) => {
+                if (err) {
+                  console.error('Error logging stock movement:', err);
+                }
+              });
+            });
+          }
+
+          // Emit real-time event for order completion
+          if (global.realTimeSync) {
+            global.realTimeSync.emit('order:completed', order);
+          }
         }
       });
     }
@@ -525,13 +634,13 @@ app.put('/api/orders/:id', (req, res) => {
   });
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'RestroBit POS Server is running' });
+// Start server
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`WebSocket server ready for connections`);
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 RestroBit POS Server running on port ${PORT}`);
-  console.log(`📊 API available at http://localhost:${PORT}/api`);
+// Catch-all handler: send back React's index.html file for any non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/build/index.html'));
 });

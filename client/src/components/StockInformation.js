@@ -95,34 +95,108 @@ const StockInformation = () => {
     }
   };
 
+  const handleStockFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const csv = e.target.result;
+          const lines = csv.split('\n').filter(line => line.trim());
+          
+          if (lines.length < 2) {
+            alert('CSV file must contain at least a header row and one data row.');
+            return;
+          }
+
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+          const requiredHeaders = ['product_name', 'category', 'quantity', 'price'];
+          
+          // Check if required headers exist (flexible matching)
+          const hasRequiredHeaders = requiredHeaders.some(required => 
+            headers.some(header => 
+              header.includes(required.replace('_', '')) || 
+              header.includes(required) ||
+              (required === 'product_name' && (header.includes('name') || header.includes('product'))) ||
+              (required === 'quantity' && (header.includes('stock') || header.includes('qty')))
+            )
+          );
+
+          if (!hasRequiredHeaders) {
+            alert('CSV file must contain columns for: Product Name, Category, Quantity, and Price');
+            return;
+          }
+
+          // Parse data rows
+          const importedProducts = [];
+          for (let i = 1; i < lines.length; i++) {
+            const values = lines[i].split(',').map(v => v.trim());
+            if (values.length >= 4) {
+              importedProducts.push({
+                id: Date.now() + i,
+                name: values[0] || `Product ${i}`,
+                category: values[1] || 'General',
+                stock: parseInt(values[2]) || 0,
+                price: parseFloat(values[3]) || 0,
+                lastUpdated: new Date().toISOString(),
+                updatedBy: 'CSV Import'
+              });
+            }
+          }
+
+          if (importedProducts.length > 0) {
+            // Update stock data with imported products
+            const updatedStockData = {
+              ...stockData,
+              totalProducts: stockData.totalProducts + importedProducts.length,
+              totalStockValue: stockData.totalStockValue + importedProducts.reduce((sum, product) => sum + (product.stock * product.price), 0)
+            };
+
+            updateStockData(updatedStockData);
+            alert(`Successfully imported ${importedProducts.length} products from ${file.name}!`);
+          } else {
+            alert('No valid product data found in the CSV file.');
+          }
+        } catch (error) {
+          alert('Error reading file. Please ensure it\'s a valid CSV file.');
+          console.error('Import error:', error);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const downloadStockSample = () => {
+    const sampleData = [
+      ['Product Name', 'Category', 'Quantity', 'Price'],
+      ['Wireless Headphones', 'Electronics', '50', '99.99'],
+      ['Coffee Mug', 'Kitchen', '100', '12.50'],
+      ['Notebook', 'Stationery', '200', '5.99'],
+      ['Desk Lamp', 'Furniture', '25', '45.00'],
+      ['Phone Case', 'Electronics', '75', '19.99']
+    ];
+
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'stock_import_sample.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
   const handleImportStock = () => {
     // Create file input for CSV import
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.csv';
-    input.onchange = (event) => {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const csv = e.target.result;
-            const lines = csv.split('\n');
-            const headers = lines[0].split(',');
-            
-            // Basic validation
-            if (headers.includes('product_name') || headers.includes('Product Name') || headers.includes('name')) {
-              alert(`Stock import initiated for file: ${file.name}\n\nFile contains ${lines.length - 1} rows.\n\nNote: This is a demo - actual import would process the data and update inventory.`);
-            } else {
-              alert('Invalid CSV format. Please ensure the file contains product information with proper headers.');
-            }
-          } catch (error) {
-            alert('Error reading file. Please ensure it\'s a valid CSV file.');
-          }
-        };
-        reader.readAsText(file);
-      }
-    };
+    input.onchange = handleStockFileImport;
     input.click();
   };
 
@@ -160,6 +234,43 @@ const StockInformation = () => {
             <span>➕</span>
             Add Product
           </button>
+        </div>
+      </div>
+
+      {/* Import Section */}
+      <div className="stock-import-section">
+        <div className="import-header">
+          <h3>📥 Import Stock Data</h3>
+          <p>Upload CSV files to bulk import stock information</p>
+        </div>
+        <div className="import-actions">
+          <div className="import-upload">
+            <input
+              type="file"
+              id="stock-file-input"
+              accept=".csv"
+              onChange={handleStockFileImport}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="import-btn upload-btn"
+              onClick={() => document.getElementById('stock-file-input').click()}
+            >
+              <span>📁</span>
+              Choose CSV File
+            </button>
+          </div>
+          <button 
+            className="import-btn sample-btn"
+            onClick={downloadStockSample}
+          >
+            <span>📋</span>
+            Download Sample
+          </button>
+        </div>
+        <div className="import-info">
+          <p>💡 <strong>CSV Format:</strong> Product Name, Category, Quantity, Price</p>
+          <p>📝 Download the sample file to see the correct format</p>
         </div>
       </div>
 

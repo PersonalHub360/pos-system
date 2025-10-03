@@ -1261,7 +1261,7 @@
 
 /* Sales Performance Section */
 .sales-performance-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   padding: 2rem;
@@ -1352,7 +1352,7 @@
   font-weight: 700;
   color: #1f2937;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #556B2F, #6B8E23);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

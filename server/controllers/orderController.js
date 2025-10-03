@@ -44,15 +44,15 @@ class OrderController {
           return res.status(404).json({ error: `Product with ID ${item.product_id} not found` });
         }
 
-        // Check stock availability for trackable products
-        if (product.is_trackable && product.current_stock < item.quantity) {
+        // Check stock availability for products with inventory tracking
+        if (product.current_stock !== null && product.current_stock < item.quantity) {
           return res.status(400).json({ 
             error: `Insufficient stock for ${product.name}. Available: ${product.current_stock}, Requested: ${item.quantity}` 
           });
         }
 
         const itemTotal = product.price * item.quantity;
-        const itemTax = itemTotal * (product.tax_rate / 100);
+        const itemTax = itemTotal * ((product.tax_rate || 0) / 100);
         
         subtotal += itemTotal;
         taxAmount += itemTax;
@@ -92,13 +92,11 @@ class OrderController {
             orderId,
             productId: item.product_id,
             quantity: item.quantity,
-            unitPrice: product.price,
-            totalPrice: itemTotal,
-            notes: item.notes
+            unitPrice: product.price
           });
 
-          // Update inventory for trackable products
-          if (product.is_trackable) {
+          // Update inventory for products with inventory tracking
+          if (product.current_stock !== null) {
             await this.updateInventoryStock(item.product_id, -item.quantity);
             
             // Log stock movement
@@ -162,7 +160,6 @@ class OrderController {
             CASE WHEN oi.notes THEN ' (' || oi.notes || ')' ELSE '' END
           ) as items_summary
         FROM orders o
-        LEFT JOIN tables t ON o.table_id = t.id
         LEFT JOIN users u1 ON o.created_by = u1.id
         LEFT JOIN users u2 ON o.served_by = u2.id
         LEFT JOIN order_items oi ON o.id = oi.order_id
@@ -182,10 +179,7 @@ class OrderController {
         params.push(orderType);
       }
 
-      if (tableId) {
-        query += ' AND o.table_id = ?';
-        params.push(tableId);
-      }
+      // Note: tableId filter removed as orders table doesn't have table_id column
 
       if (dateFrom) {
         query += ' AND DATE(o.created_at) >= ?';
@@ -210,7 +204,6 @@ class OrderController {
       let countQuery = `
         SELECT COUNT(DISTINCT o.id) as total
         FROM orders o
-        LEFT JOIN tables t ON o.table_id = t.id
         WHERE 1=1
       `;
       const countParams = [];
@@ -225,10 +218,7 @@ class OrderController {
         countParams.push(orderType);
       }
 
-      if (tableId) {
-        countQuery += ' AND o.table_id = ?';
-        countParams.push(tableId);
-      }
+      // Note: tableId filter removed as orders table doesn't have table_id column
 
       if (dateFrom) {
         countQuery += ' AND DATE(o.created_at) >= ?';
@@ -292,16 +282,12 @@ class OrderController {
         return res.status(404).json({ error: 'Order not found' });
       }
 
-      const updateData = { order_status: status };
+      const updateData = { status: status };
       if (servedBy) updateData.served_by = servedBy;
-      if (status === 'completed') updateData.completed_at = new Date().toISOString();
 
       await this.updateOrder(id, updateData);
 
-      // If order is completed and has a table, free the table
-      if (status === 'completed' && existingOrder[0].table_id) {
-        await this.updateTableStatus(existingOrder[0].table_id, 'available');
-      }
+      // Note: Table management removed as orders table doesn't have table_id column
 
       // Emit real-time event for order completion
       if (status === 'completed') {
@@ -343,11 +329,11 @@ class OrderController {
           notes: order.notes ? `${order.notes}\nCancelled: ${reason}` : `Cancelled: ${reason}`
         });
 
-        // Restore inventory for trackable products
+        // Restore inventory for products with inventory tracking
         const orderItems = await this.getOrderItems(id);
         for (const item of orderItems) {
           const product = await this.getProductById(item.product_id);
-          if (product && product.is_trackable) {
+          if (product && product.current_stock !== null) {
             await this.updateInventoryStock(item.product_id, item.quantity);
             
             // Log stock movement
@@ -363,10 +349,7 @@ class OrderController {
           }
         }
 
-        // Free table if occupied
-        if (order.table_id) {
-          await this.updateTableStatus(order.table_id, 'available');
-        }
+        // Note: Table management removed as orders table doesn't have table_id column
 
         await this.commitTransaction();
 
@@ -482,7 +465,7 @@ class OrderController {
 
   async getProductById(id) {
     const products = await this.executeQuery(`
-      SELECT p.*, i.current_stock, i.is_trackable
+      SELECT p.*, i.current_stock
       FROM products p
       LEFT JOIN inventory i ON p.id = i.product_id
       WHERE p.id = ?
@@ -493,15 +476,8 @@ class OrderController {
   async getOrderById(id) {
     const orders = await this.executeQuery(`
       SELECT 
-        o.*,
-        t.table_number,
-        t.table_name,
-        u1.username as created_by_username,
-        u2.username as served_by_username
+        o.*
       FROM orders o
-      LEFT JOIN tables t ON o.table_id = t.id
-      LEFT JOIN users u1 ON o.created_by = u1.id
-      LEFT JOIN users u2 ON o.served_by = u2.id
       WHERE o.id = ?
     `, [id]);
 
@@ -559,8 +535,14 @@ class OrderController {
   async rollbackTransaction() {
     return new Promise((resolve, reject) => {
       this.db.run('ROLLBACK', (err) => {
-        if (err) reject(err);
-        else resolve();
+        // Don't reject if there's no active transaction
+        if (err && err.message && err.message.includes('no transaction is active')) {
+          resolve();
+        } else if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
       });
     });
   }
@@ -575,14 +557,10 @@ class OrderController {
 
       this.db.run(`
         INSERT INTO orders (
-          order_number, table_id, customer_name, customer_phone, customer_email,
-          order_type, subtotal, discount_amount, discount_type, tax_amount,
-          service_charge, total, payment_method, notes, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          order_number, subtotal, discount, total, status
+        ) VALUES (?, ?, ?, ?, ?)
       `, [
-        orderNumber, tableId, customerName, customerPhone, customerEmail,
-        orderType, subtotal, discountAmount, discountType, taxAmount,
-        serviceCharge, total, paymentMethod, notes, createdBy
+        orderNumber, subtotal, discountAmount || 0, total, 'pending'
       ], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
@@ -595,9 +573,9 @@ class OrderController {
       const { orderId, productId, quantity, unitPrice, totalPrice, notes } = itemData;
       
       this.db.run(`
-        INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price, notes)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `, [orderId, productId, quantity, unitPrice, totalPrice, notes], function(err) {
+        INSERT INTO order_items (order_id, product_id, quantity, price)
+        VALUES (?, ?, ?, ?)
+      `, [orderId, productId, quantity, unitPrice], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
       });
@@ -617,7 +595,6 @@ class OrderController {
 
     if (fields.length === 0) return;
 
-    fields.push('updated_at = CURRENT_TIMESTAMP');
     values.push(id);
 
     return new Promise((resolve, reject) => {

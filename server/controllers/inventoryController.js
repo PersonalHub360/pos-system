@@ -26,17 +26,14 @@ class InventoryController {
           p.category_id,
           p.image_url,
           c.name as category_name,
-          s.name as supplier_name,
-          s.contact_person as supplier_contact,
           CASE 
-            WHEN i.current_stock <= i.reorder_level THEN 1 
+            WHEN i.current_stock <= i.min_stock THEN 1 
             ELSE 0 
           END as is_low_stock
         FROM inventory i
         JOIN products p ON i.product_id = p.id
         LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN suppliers s ON i.supplier_id = s.id
-        WHERE p.is_active = 1
+        WHERE p.status = 'active'
       `;
 
       const params = [];
@@ -47,12 +44,12 @@ class InventoryController {
       }
 
       if (trackable !== null) {
-        query += ' AND i.is_trackable = ?';
+        query += ' AND p.is_trackable = ?';
         params.push(trackable === 'true' ? 1 : 0);
       }
 
       if (lowStock === 'true') {
-        query += ' AND i.current_stock <= i.reorder_level';
+        query += ' AND i.current_stock <= i.min_stock';
       }
 
       if (search) {
@@ -61,7 +58,7 @@ class InventoryController {
       }
 
       // Sorting
-      const validSortFields = ['name', 'current_stock', 'reorder_level', 'cost_price', 'category_name'];
+      const validSortFields = ['name', 'current_stock', 'min_stock', 'category_name'];
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'name';
       const order = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
       
@@ -86,7 +83,7 @@ class InventoryController {
         FROM inventory i
         JOIN products p ON i.product_id = p.id
         LEFT JOIN categories c ON p.category_id = c.id
-        WHERE p.is_active = 1
+        WHERE p.status = 'active'
       `;
       const countParams = [];
 
@@ -96,12 +93,12 @@ class InventoryController {
       }
 
       if (trackable !== null) {
-        countQuery += ' AND i.is_trackable = ?';
+        countQuery += ' AND p.is_trackable = ?';
         countParams.push(trackable === 'true' ? 1 : 0);
       }
 
       if (lowStock === 'true') {
-        countQuery += ' AND i.current_stock <= i.reorder_level';
+        countQuery += ' AND i.current_stock <= i.min_stock';
       }
 
       if (search) {
@@ -140,15 +137,10 @@ class InventoryController {
           p.price,
           p.category_id,
           p.image_url,
-          c.name as category_name,
-          s.name as supplier_name,
-          s.contact_person as supplier_contact,
-          s.phone as supplier_phone,
-          s.email as supplier_email
+          c.name as category_name
         FROM inventory i
         JOIN products p ON i.product_id = p.id
         LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN suppliers s ON i.supplier_id = s.id
         WHERE i.product_id = ?
       `;
 
@@ -207,11 +199,8 @@ class InventoryController {
       }
 
       const updateData = {};
-      if (reorderLevel !== undefined) updateData.reorder_level = reorderLevel;
+      if (reorderLevel !== undefined) updateData.min_stock = reorderLevel;
       if (maxStock !== undefined) updateData.max_stock = maxStock;
-      if (costPrice !== undefined) updateData.cost_price = costPrice;
-      if (supplierId !== undefined) updateData.supplier_id = supplierId;
-      if (isTrackable !== undefined) updateData.is_trackable = isTrackable;
       if (unit !== undefined) updateData.unit = unit;
       if (notes !== undefined) updateData.notes = notes;
 
@@ -247,7 +236,7 @@ class InventoryController {
 
       // Check if inventory item exists
       const inventory = await this.executeQuery(
-        'SELECT * FROM inventory WHERE product_id = ?',
+        'SELECT i.* FROM inventory i WHERE i.product_id = ?',
         [id]
       );
 
@@ -256,11 +245,6 @@ class InventoryController {
       }
 
       const currentItem = inventory[0];
-
-      // Check if item is trackable
-      if (!currentItem.is_trackable) {
-        return res.status(400).json({ error: 'Cannot adjust stock for non-trackable items' });
-      }
 
       // For stock out, check if sufficient stock is available
       if (adjustmentType === 'out' && currentItem.current_stock < quantity) {
@@ -278,9 +262,6 @@ class InventoryController {
 
         // Update inventory
         const updateData = { current_stock: newStock };
-        if (costPrice && adjustmentType === 'in') {
-          updateData.cost_price = costPrice;
-        }
 
         await this.updateInventory(id, updateData);
 
@@ -336,7 +317,7 @@ class InventoryController {
 
           // Get current inventory
           const inventory = await this.executeQuery(
-            'SELECT * FROM inventory WHERE product_id = ?',
+            'SELECT i.* FROM inventory i WHERE i.product_id = ?',
             [productId]
           );
 
@@ -345,10 +326,6 @@ class InventoryController {
           }
 
           const currentItem = inventory[0];
-
-          if (!currentItem.is_trackable) {
-            throw new Error(`Cannot adjust stock for non-trackable product ${productId}`);
-          }
 
           // Check stock availability for out adjustments
           if (adjustmentType === 'out' && currentItem.current_stock < quantity) {
@@ -518,16 +495,13 @@ class InventoryController {
           p.name,
           p.description,
           c.name as category_name,
-          s.name as supplier_name,
-          (i.reorder_level - i.current_stock) as shortage_quantity
+          (i.min_stock - i.current_stock) as shortage_quantity
         FROM inventory i
         JOIN products p ON i.product_id = p.id
         LEFT JOIN categories c ON p.category_id = c.id
-        LEFT JOIN suppliers s ON i.supplier_id = s.id
-        WHERE i.is_trackable = 1 
-        AND i.current_stock <= i.reorder_level
-        AND p.is_active = 1
-        ORDER BY (i.current_stock / NULLIF(i.reorder_level, 0)) ASC
+        WHERE i.current_stock <= i.min_stock
+        AND p.status = 'active'
+        ORDER BY (i.current_stock / NULLIF(i.min_stock, 0)) ASC
       `;
 
       const lowStockItems = await this.executeQuery(query);
@@ -548,12 +522,11 @@ class InventoryController {
       const summaryQuery = `
         SELECT 
           COUNT(*) as total_products,
-          COUNT(CASE WHEN i.is_trackable = 1 THEN 1 END) as trackable_products,
-          COUNT(CASE WHEN i.current_stock <= i.reorder_level AND i.is_trackable = 1 THEN 1 END) as low_stock_items,
-          SUM(CASE WHEN i.is_trackable = 1 THEN i.current_stock * i.cost_price ELSE 0 END) as total_inventory_value
+          COUNT(CASE WHEN i.current_stock <= i.min_stock THEN 1 END) as low_stock_items,
+          SUM(i.current_stock * p.price) as total_inventory_value
         FROM inventory i
         JOIN products p ON i.product_id = p.id
-        WHERE p.is_active = 1
+        WHERE p.status = 'active'
       `;
 
       // Stock movements summary
@@ -580,12 +553,12 @@ class InventoryController {
         SELECT 
           c.name as category_name,
           COUNT(i.product_id) as product_count,
-          SUM(CASE WHEN i.is_trackable = 1 THEN i.current_stock * i.cost_price ELSE 0 END) as inventory_value,
-          COUNT(CASE WHEN i.current_stock <= i.reorder_level AND i.is_trackable = 1 THEN 1 END) as low_stock_count
+          SUM(i.current_stock * p.price) as inventory_value,
+          COUNT(CASE WHEN i.current_stock <= i.min_stock THEN 1 END) as low_stock_count
         FROM inventory i
         JOIN products p ON i.product_id = p.id
         JOIN categories c ON p.category_id = c.id
-        WHERE p.is_active = 1
+        WHERE p.status = 'active'
         GROUP BY c.id, c.name
         ORDER BY inventory_value DESC
       `;
@@ -638,9 +611,9 @@ class InventoryController {
       
       this.db.run(`
         INSERT INTO stock_movements (
-          product_id, movement_type, quantity, reference_type, reference_id, reason, notes, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [productId, movementType, quantity, referenceType, referenceId, reason, notes, createdBy], function(err) {
+          product_id, movement_type, quantity, reference_type, reference_id, notes, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [productId, movementType, quantity, referenceType, referenceId, notes, createdBy], function(err) {
         if (err) reject(err);
         else resolve(this.lastID);
       });

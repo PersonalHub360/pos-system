@@ -20,6 +20,13 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
     permissions: []
   });
 
+  // QR Form State
+  const [qrForm, setQrForm] = useState({
+    name: '',
+    qrData: '',
+    qrImage: null
+  });
+
   // Company Information State
   const [companyInfo, setCompanyInfo] = useState({
     name: 'Bond POS System',
@@ -97,11 +104,47 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
     allowPartialPayments: true
   });
 
+  // Printing Settings State
+  const [printingSettings, setPrintingSettings] = useState({
+    printerName: 'Default Printer',
+    paperSize: 'A4',
+    orientation: 'portrait',
+    margins: {
+      top: 20,
+      bottom: 20,
+      left: 20,
+      right: 20
+    },
+    fontSize: 12,
+    fontFamily: 'Arial',
+    printLogo: true,
+    printCompanyInfo: true,
+    printCustomerInfo: true,
+    printItemDetails: true,
+    printTotals: true,
+    printFooter: true,
+    footerText: 'Thank you for your business!',
+    autoPrint: false,
+    printCopies: 1,
+    thermalPrinter: false,
+    thermalWidth: 80, // mm
+    qrCodeSize: 'medium',
+    barcodeFormat: 'CODE128'
+  });
+
   // Load order settings from localStorage
   useEffect(() => {
     const savedOrderSettings = localStorage.getItem('orderSettings');
     if (savedOrderSettings) {
       setOrderSettings(JSON.parse(savedOrderSettings));
+    }
+  }, []);
+
+  // Load printing settings from localStorage
+  useEffect(() => {
+    const savedPrintingSettings = localStorage.getItem('printingSettings');
+    if (savedPrintingSettings) {
+      setPrintingSettings(JSON.parse(savedPrintingSettings));
     }
   }, []);
 
@@ -319,20 +362,89 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
   };
 
   const addQRPayment = () => {
-    const name = prompt('Enter QR payment name:');
-    const qrData = prompt('Enter QR code data:');
-    if (name && qrData) {
+    setModalType('add-qr');
+    setSelectedItem(null);
+    setQrForm({
+      name: '',
+      qrData: '',
+      qrImage: null
+    });
+    setShowModal(true);
+  };
+
+  const handleEditQR = (qr) => {
+    setModalType('edit-qr');
+    setSelectedItem(qr);
+    setQrForm({
+      name: qr.name,
+      qrData: qr.qrData || '',
+      qrImage: qr.qrImage || null
+    });
+    setShowModal(true);
+  };
+
+  const handleDeleteQR = (qrId) => {
+    if (window.confirm('Are you sure you want to delete this QR payment method?')) {
+      setPaymentMethods(prev => ({
+        ...prev,
+        qrCodes: prev.qrCodes.filter(qr => qr.id !== qrId)
+      }));
+    }
+  };
+
+  const handleQrFormChange = (e) => {
+    const { name, value } = e.target;
+    setQrForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleQrImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setQrForm(prev => ({
+          ...prev,
+          qrImage: event.target.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitQR = () => {
+    if (!qrForm.name) {
+      alert('Please enter a QR payment name');
+      return;
+    }
+
+    if (modalType === 'add-qr') {
       const newQR = {
         id: Date.now(),
-        name,
-        qrData,
+        name: qrForm.name,
+        qrData: qrForm.qrData,
+        qrImage: qrForm.qrImage,
         enabled: true
       };
       setPaymentMethods(prev => ({
         ...prev,
         qrCodes: [...prev.qrCodes, newQR]
       }));
+    } else if (modalType === 'edit-qr') {
+      setPaymentMethods(prev => ({
+        ...prev,
+        qrCodes: prev.qrCodes.map(qr => 
+          qr.id === selectedItem.id 
+            ? { ...qr, name: qrForm.name, qrData: qrForm.qrData, qrImage: qrForm.qrImage }
+            : qr
+        )
+      }));
     }
+    
+    setShowModal(false);
+    setSelectedItem(null);
   };
 
   const handleOrderSettingsChange = (e) => {
@@ -395,6 +507,31 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
     alert('Order settings saved successfully!');
   };
 
+  const savePrintingSettings = () => {
+    localStorage.setItem('printingSettings', JSON.stringify(printingSettings));
+    alert('Printing settings saved successfully!');
+  };
+
+  const handlePrintingSettingsChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setPrintingSettings(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
+        }
+      }));
+    } else {
+      setPrintingSettings(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : (type === 'number' ? Number(value) : value)
+      }));
+    }
+  };
+
   const closeModal = () => {
     setShowModal(false);
     setSelectedItem(null);
@@ -453,6 +590,12 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
           onClick={() => setActiveSection('invoice')}
         >
           📄 Invoice Settings
+        </button>
+        <button 
+          className={`nav-btn ${activeSection === 'printing' ? 'active' : ''}`}
+          onClick={() => setActiveSection('printing')}
+        >
+          🖨️ Printing Settings
         </button>
         <button 
           className={`nav-btn ${activeSection === 'order' ? 'active' : ''}`}
@@ -667,7 +810,7 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
             <div className="payment-category">
               <h3>📱 QR Code Payments</h3>
               {paymentMethods.qrCodes.map(qr => (
-                <div key={qr.id} className="payment-item">
+                <div key={qr.id} className="payment-item qr-payment-item">
                   <label className="switch">
                     <input 
                       type="checkbox" 
@@ -677,8 +820,29 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
                     <span className="slider"></span>
                   </label>
                   <div className="qr-info">
-                    <strong>{qr.name}</strong>
-                    <span>QR Code Available</span>
+                    <div className="qr-details">
+                      <strong>{qr.name}</strong>
+                      <span>QR Code Available</span>
+                    </div>
+                    {qr.qrImage && (
+                      <div className="qr-preview">
+                        <img src={qr.qrImage} alt={`${qr.name} QR Code`} className="qr-image" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="qr-actions">
+                    <button 
+                      className="btn btn-sm btn-secondary" 
+                      onClick={() => handleEditQR(qr)}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      className="btn btn-sm btn-danger" 
+                      onClick={() => handleDeleteQR(qr.id)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -1047,6 +1211,216 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
         </div>
       )}
 
+      {/* Printing Settings Section */}
+      {activeSection === 'printing' && (
+        <div className="settings-section">
+          <div className="section-header">
+            <h2>Printing Settings</h2>
+            <button className="btn btn-primary" onClick={savePrintingSettings}>
+              Save Changes
+            </button>
+          </div>
+          
+          <div className="printing-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Printer Name</label>
+                <input
+                  type="text"
+                  name="printerName"
+                  value={printingSettings.printerName}
+                  onChange={handlePrintingSettingsChange}
+                  placeholder="Enter printer name"
+                />
+              </div>
+              <div className="form-group">
+                <label>Paper Size</label>
+                <select
+                  name="paperSize"
+                  value={printingSettings.paperSize}
+                  onChange={handlePrintingSettingsChange}
+                >
+                  <option value="A4">A4</option>
+                  <option value="A5">A5</option>
+                  <option value="Letter">Letter</option>
+                  <option value="Receipt">Receipt (80mm)</option>
+                  <option value="Custom">Custom</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Print Quality</label>
+                <select
+                  name="printQuality"
+                  value={printingSettings.printQuality}
+                  onChange={handlePrintingSettingsChange}
+                >
+                  <option value="draft">Draft</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High Quality</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3>Margins (mm)</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Top</label>
+                  <input
+                    type="number"
+                    name="margins.top"
+                    value={printingSettings.margins.top}
+                    onChange={handlePrintingSettingsChange}
+                    min="0"
+                    step="0.1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Bottom</label>
+                  <input
+                    type="number"
+                    name="margins.bottom"
+                    value={printingSettings.margins.bottom}
+                    onChange={handlePrintingSettingsChange}
+                    min="0"
+                    step="0.1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Left</label>
+                  <input
+                    type="number"
+                    name="margins.left"
+                    value={printingSettings.margins.left}
+                    onChange={handlePrintingSettingsChange}
+                    min="0"
+                    step="0.1"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Right</label>
+                  <input
+                    type="number"
+                    name="margins.right"
+                    value={printingSettings.margins.right}
+                    onChange={handlePrintingSettingsChange}
+                    min="0"
+                    step="0.1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3>Font Settings</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Font Family</label>
+                  <select
+                    name="font.family"
+                    value={printingSettings.font.family}
+                    onChange={handlePrintingSettingsChange}
+                  >
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                    <option value="Helvetica">Helvetica</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Font Size (pt)</label>
+                  <input
+                    type="number"
+                    name="font.size"
+                    value={printingSettings.font.size}
+                    onChange={handlePrintingSettingsChange}
+                    min="8"
+                    max="72"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3>Print Options</h3>
+              <div className="checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="autoPrint"
+                    checked={printingSettings.autoPrint}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Auto Print Invoices
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="printLogo"
+                    checked={printingSettings.printLogo}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Print Company Logo
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="printBarcode"
+                    checked={printingSettings.printBarcode}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Print Barcode/QR Code
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="printCustomerInfo"
+                    checked={printingSettings.printCustomerInfo}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Print Customer Information
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="printItemDetails"
+                    checked={printingSettings.printItemDetails}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Print Detailed Item Information
+                </label>
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    name="printFooterMessage"
+                    checked={printingSettings.printFooterMessage}
+                    onChange={handlePrintingSettingsChange}
+                  />
+                  Print Footer Message
+                </label>
+              </div>
+            </div>
+
+            <div className="form-section">
+              <h3>Copies</h3>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Number of Copies</label>
+                  <input
+                    type="number"
+                    name="copies"
+                    value={printingSettings.copies}
+                    onChange={handlePrintingSettingsChange}
+                    min="1"
+                    max="10"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal */}
       {showModal && (
         <div className="modal-overlay">
@@ -1056,6 +1430,8 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
                 {modalType === 'add-staff' && 'Add New Staff Member'}
                 {modalType === 'edit-staff' && 'Edit Staff Member'}
                 {modalType === 'delete-staff' && 'Delete Staff Member'}
+                {modalType === 'add-qr' && 'Add QR Payment Method'}
+                {modalType === 'edit-qr' && 'Edit QR Payment Method'}
               </h3>
               <button className="close-btn" onClick={closeModal}>×</button>
             </div>
@@ -1071,6 +1447,74 @@ const Settings = ({ invoiceSettings = {}, setInvoiceSettings = () => {} }) => {
                     </button>
                     <button className="btn btn-danger" onClick={confirmDeleteStaff}>
                       Delete Staff
+                    </button>
+                  </div>
+                </div>
+              ) : modalType === 'add-qr' || modalType === 'edit-qr' ? (
+                <div className="qr-form">
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Payment Method Name *</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={qrForm.name}
+                        onChange={handleQrFormChange}
+                        placeholder="e.g., Mobile Banking, Digital Wallet"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>QR Code Data</label>
+                      <textarea
+                        name="qrData"
+                        value={qrForm.qrData}
+                        onChange={handleQrFormChange}
+                        placeholder="Enter QR code data or payment information"
+                        rows="3"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="form-section">
+                    <h4>QR Code Image</h4>
+                    <div className="qr-upload-section">
+                      <input
+                        type="file"
+                        id="qr-image-upload"
+                        accept="image/*"
+                        onChange={handleQrImageUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="qr-image-upload" className="btn btn-secondary upload-btn">
+                        📁 Upload QR Code Image
+                      </label>
+                      
+                      {qrForm.qrImage && (
+                        <div className="qr-preview-container">
+                          <img 
+                            src={qrForm.qrImage} 
+                            alt="QR Code Preview" 
+                            className="qr-preview-image"
+                          />
+                          <button 
+                            type="button" 
+                            className="btn btn-sm btn-danger remove-image-btn"
+                            onClick={() => setQrForm(prev => ({ ...prev, qrImage: null }))}
+                          >
+                            Remove Image
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="modal-actions">
+                    <button className="btn btn-secondary" onClick={closeModal}>
+                      Cancel
+                    </button>
+                    <button className="btn btn-primary" onClick={handleSubmitQR}>
+                      {modalType === 'add-qr' ? 'Add QR Payment' : 'Update QR Payment'}
                     </button>
                   </div>
                 </div>

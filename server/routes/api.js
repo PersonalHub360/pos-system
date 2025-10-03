@@ -119,6 +119,7 @@ function initializeRoutes(db) {
   
   // Inventory management
   router.get('/inventory', authMiddleware.verifyToken, (req, res) => inventoryController.getAllInventory(req, res));
+  router.get('/inventory/low-stock', authMiddleware.verifyToken, (req, res) => inventoryController.getLowStockItems(req, res));
   router.get('/inventory/:id', authMiddleware.verifyToken, (req, res) => inventoryController.getInventoryItem(req, res));
   router.put('/inventory/:id', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => inventoryController.updateInventoryItem(req, res));
   
@@ -128,7 +129,6 @@ function initializeRoutes(db) {
   
   // Stock movements and analytics
   router.get('/inventory/movements', authMiddleware.verifyToken, (req, res) => inventoryController.getStockMovements(req, res));
-  router.get('/inventory/low-stock', authMiddleware.verifyToken, (req, res) => inventoryController.getLowStockItems(req, res));
   router.get('/inventory/analytics/summary', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => inventoryController.getInventoryAnalytics(req, res));
 
   // ============================================================================
@@ -166,7 +166,7 @@ function initializeRoutes(db) {
   });
 
   // System information (admin only)
-  router.get('/system/info', authenticateToken, requireRole(['admin']), async (req, res) => {
+  router.get('/system/info', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), async (req, res) => {
     try {
       // Get database statistics
       const stats = await Promise.all([
@@ -217,51 +217,7 @@ function initializeRoutes(db) {
   // LEGACY COMPATIBILITY ROUTES (for existing frontend)
   // ============================================================================
   
-  // Keep existing routes for backward compatibility
-  router.get('/categories', (req, res) => {
-    db.all('SELECT * FROM categories ORDER BY name', (err, rows) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch categories' });
-      }
-      res.json(rows);
-    });
-  });
 
-  router.post('/categories', (req, res) => {
-    const { name, description } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Category name is required' });
-    }
-
-    // Check if category already exists
-    db.get('SELECT id FROM categories WHERE name = ?', [name], (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      
-      if (row) {
-        return res.status(409).json({ error: 'Category already exists' });
-      }
-
-      // Insert new category
-      db.run('INSERT INTO categories (name, description) VALUES (?, ?)', [name, description], function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Failed to create category' });
-        }
-        
-        res.status(201).json({
-          id: this.lastID,
-          name,
-          description,
-          message: 'Category created successfully'
-        });
-      });
-    });
-  });
 
   // Legacy products route
   router.get('/products', (req, res) => {
@@ -302,56 +258,56 @@ function initializeRoutes(db) {
   // ============================================================================
   
   // Get audit logs with filtering and pagination
-  router.get('/audit/logs', authMiddleware.authenticate(), authMiddleware.requireRole(['admin', 'manager']), auditController.getAuditLogs.bind(auditController));
+  router.get('/audit/logs', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), auditController.getAuditLogs.bind(auditController));
   
   // Get audit trail for specific record
-  router.get('/audit/trail/:tableName/:recordId', authMiddleware.authenticate(), authMiddleware.requireRole(['admin', 'manager']), auditController.getAuditTrail.bind(auditController));
+  router.get('/audit/trail/:tableName/:recordId', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), auditController.getAuditTrail.bind(auditController));
   
   // Get audit summary
-  router.get('/audit/summary', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), auditController.getAuditSummary.bind(auditController));
+  router.get('/audit/summary', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), auditController.getAuditSummary.bind(auditController));
   
   // Run integrity checks
-  router.post('/audit/integrity-check', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), auditController.runIntegrityChecks.bind(auditController));
+  router.post('/audit/integrity-check', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), auditController.runIntegrityChecks.bind(auditController));
   
   // Get audit statistics
-  router.get('/audit/statistics', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), auditController.getAuditStatistics.bind(auditController));
+  router.get('/audit/statistics', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), auditController.getAuditStatistics.bind(auditController));
   
   // Get security events
-  router.get('/audit/security-events', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), auditController.getSecurityEvents.bind(auditController));
+  router.get('/audit/security-events', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), auditController.getSecurityEvents.bind(auditController));
 
   // ============================================================================
   // BACKUP ROUTES
   // ============================================================================
   
   // Create full backup
-  router.post('/backup/full', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.createFullBackup.bind(backupController));
+  router.post('/backup/full', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.createFullBackup.bind(backupController));
   
   // Create incremental backup
-  router.post('/backup/incremental', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.createIncrementalBackup.bind(backupController));
+  router.post('/backup/incremental', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.createIncrementalBackup.bind(backupController));
   
   // List all backups
-  router.get('/backup/list', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.listBackups.bind(backupController));
+  router.get('/backup/list', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.listBackups.bind(backupController));
   
   // Get backup details
-  router.get('/backup/:filename/details', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.getBackupDetails.bind(backupController));
+  router.get('/backup/:filename/details', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.getBackupDetails.bind(backupController));
   
   // Restore from backup
-  router.post('/backup/:filename/restore', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.restoreBackup.bind(backupController));
+  router.post('/backup/:filename/restore', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.restoreBackup.bind(backupController));
   
   // Delete backup
-  router.delete('/backup/:filename', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.deleteBackup.bind(backupController));
+  router.delete('/backup/:filename', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.deleteBackup.bind(backupController));
   
   // Verify backup integrity
-  router.get('/backup/:filename/verify', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.verifyBackup.bind(backupController));
+  router.get('/backup/:filename/verify', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.verifyBackup.bind(backupController));
   
   // Get backup statistics
-  router.get('/backup/statistics', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.getBackupStatistics.bind(backupController));
+  router.get('/backup/statistics', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.getBackupStatistics.bind(backupController));
   
   // Download backup file
-  router.get('/backup/:filename/download', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.downloadBackup.bind(backupController));
+  router.get('/backup/:filename/download', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.downloadBackup.bind(backupController));
   
   // Upload backup file (requires multer middleware for file upload)
-  router.post('/backup/upload', authMiddleware.authenticate(), authMiddleware.requireRole(['admin']), backupController.uploadBackup.bind(backupController));
+  router.post('/backup/upload', authMiddleware.verifyToken, authMiddleware.requireRole(['admin']), backupController.uploadBackup.bind(backupController));
 
   return router;
 }

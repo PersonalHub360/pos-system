@@ -452,6 +452,181 @@ class ProductController {
       });
     });
   }
+
+  // ============================================================================
+  // CATEGORY METHODS
+  // ============================================================================
+
+  async getAllCategories(req, res) {
+    try {
+      const categories = await this.executeQuery('SELECT * FROM categories ORDER BY name');
+      res.json({
+        success: true,
+        data: categories
+      });
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch categories'
+      });
+    }
+  }
+
+  async createCategory(req, res) {
+    try {
+      const { name, description } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category name is required'
+        });
+      }
+
+      // Check if category already exists
+      const existingCategory = await this.executeQuery(
+        'SELECT id FROM categories WHERE name = ?',
+        [name.trim()]
+      );
+
+      if (existingCategory.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category already exists'
+        });
+      }
+
+      const result = await this.executeQuery(
+        'INSERT INTO categories (name, description) VALUES (?, ?)',
+        [name.trim(), description || '']
+      );
+
+      const newCategory = await this.executeQuery(
+        'SELECT * FROM categories WHERE id = ?',
+        [result.lastID]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: 'Category created successfully',
+        data: newCategory[0]
+      });
+    } catch (error) {
+      console.error('Error creating category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to create category'
+      });
+    }
+  }
+
+  async updateCategory(req, res) {
+    try {
+      const { id } = req.params;
+      const { name, description } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category name is required'
+        });
+      }
+
+      // Check if category exists
+      const existingCategory = await this.executeQuery(
+        'SELECT * FROM categories WHERE id = ?',
+        [id]
+      );
+
+      if (existingCategory.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Category not found'
+        });
+      }
+
+      // Check if another category with the same name exists
+      const duplicateCategory = await this.executeQuery(
+        'SELECT id FROM categories WHERE name = ? AND id != ?',
+        [name.trim(), id]
+      );
+
+      if (duplicateCategory.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Category name already exists'
+        });
+      }
+
+      await this.executeQuery(
+        'UPDATE categories SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [name.trim(), description || '', id]
+      );
+
+      const updatedCategory = await this.executeQuery(
+        'SELECT * FROM categories WHERE id = ?',
+        [id]
+      );
+
+      res.json({
+        success: true,
+        message: 'Category updated successfully',
+        data: updatedCategory[0]
+      });
+    } catch (error) {
+      console.error('Error updating category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update category'
+      });
+    }
+  }
+
+  async deleteCategory(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Check if category exists
+      const existingCategory = await this.executeQuery(
+        'SELECT * FROM categories WHERE id = ?',
+        [id]
+      );
+
+      if (existingCategory.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Category not found'
+        });
+      }
+
+      // Check if category is being used by any products
+      const productsUsingCategory = await this.executeQuery(
+        'SELECT COUNT(*) as count FROM products WHERE category_id = ?',
+        [id]
+      );
+
+      if (productsUsingCategory[0].count > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Cannot delete category that is being used by products'
+        });
+      }
+
+      await this.executeQuery('DELETE FROM categories WHERE id = ?', [id]);
+
+      res.json({
+        success: true,
+        message: 'Category deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete category'
+      });
+    }
+  }
 }
 
 module.exports = ProductController;

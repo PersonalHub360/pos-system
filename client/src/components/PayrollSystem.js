@@ -189,13 +189,90 @@ const PayrollSystem = () => {
     }
   };
 
+  const handleFileImport = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type === 'text/csv') {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const csv = e.target.result;
+        const lines = csv.split('\n');
+        const headers = lines[0].split(',');
+        
+        const importedData = [];
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim()) {
+            const values = lines[i].split(',');
+            const payrollRecord = {
+              id: `PAY${String(payrollData.length + importedData.length + 1).padStart(3, '0')}`,
+              employeeId: values[0]?.trim() || '',
+              employeeName: values[1]?.trim() || '',
+              position: values[2]?.trim() || '',
+              baseSalary: parseInt(values[3]) || 0,
+              overtime: parseInt(values[4]) || 0,
+              bonus: parseInt(values[5]) || 0,
+              deductions: parseInt(values[6]) || 0,
+              netSalary: (parseInt(values[3]) || 0) + (parseInt(values[4]) || 0) + (parseInt(values[5]) || 0) - (parseInt(values[6]) || 0),
+              payPeriod: values[7]?.trim() || '',
+              status: 'Pending'
+            };
+            importedData.push(payrollRecord);
+          }
+        }
+        
+        setPayrollData(prev => [...prev, ...importedData]);
+        alert(`Successfully imported ${importedData.length} payroll records!`);
+      };
+      reader.readAsText(file);
+    } else {
+      alert('Please select a valid CSV file.');
+    }
+    // Reset file input
+    event.target.value = '';
+  };
+
+  const downloadSampleFile = () => {
+    const sampleData = [
+      ['Employee ID', 'Employee Name', 'Position', 'Base Salary', 'Overtime', 'Bonus', 'Deductions', 'Pay Period'],
+      ['EMP004', 'Alice Brown', 'Designer', '70000', '2500', '1200', '7800', '2024-03-01 to 2024-03-31'],
+      ['EMP005', 'Bob Wilson', 'Analyst', '60000', '1800', '800', '6500', '2024-03-01 to 2024-03-31'],
+      ['EMP006', 'Carol Davis', 'Coordinator', '55000', '1500', '600', '5800', '2024-03-01 to 2024-03-31']
+    ];
+    
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'payroll_sample.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
   const renderPayroll = () => (
     <div className="payroll-management">
       <div className="section-header">
         <h3>Payroll Management</h3>
-        <button className="btn-primary" onClick={handleAddPayroll}>
-          Add New Payroll
-        </button>
+        <div className="import-section">
+          <button className="btn-primary" onClick={handleAddPayroll}>
+            Add New Payroll
+          </button>
+          <div className="file-input-wrapper">
+            <input
+              type="file"
+              id="payroll-import"
+              accept=".csv"
+              onChange={handleFileImport}
+            />
+            <label htmlFor="payroll-import" className="file-input-label">
+              Import CSV
+            </label>
+          </div>
+          <button className="download-sample-btn" onClick={downloadSampleFile}>
+            Download Sample
+          </button>
+        </div>
       </div>
       
       <div className="payroll-table">

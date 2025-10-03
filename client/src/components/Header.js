@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import PrinterSettings from './PrinterSettings';
 import DraftList from './DraftList';
 import UserProfile from './UserProfile';
 import TableManagement from './TableManagement';
+import QRMenuOrders from './QRMenuOrders';
 import './Header.css';
 
 const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draftOrders, setDraftOrders, onSidebarToggle, sidebarVisible }) => {
@@ -12,6 +13,31 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
   const [showDraftList, setShowDraftList] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
   const [showTableManagement, setShowTableManagement] = useState(false);
+  const [showQRMenuOrders, setShowQRMenuOrders] = useState(false);
+  const [userAvatar, setUserAvatar] = useState(null);
+
+  // Load user avatar from localStorage
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      const parsedProfile = JSON.parse(savedProfile);
+      setUserAvatar(parsedProfile.avatar);
+    }
+  }, []);
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const savedProfile = localStorage.getItem('userProfile');
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        setUserAvatar(parsedProfile.avatar);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const handleNewOrder = () => {
     if (onNewOrder) {
@@ -20,8 +46,7 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
   };
 
   const handleQRMenuOrders = () => {
-    // QR Menu Orders functionality
-    console.log('QR Menu Orders clicked');
+    setShowQRMenuOrders(true);
   };
 
   const handleDraftList = () => {
@@ -39,6 +64,15 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
   const handleUserProfile = () => {
     setShowUserProfile(true);
   };
+
+  const handleProfileUpdate = () => {
+    // Refresh avatar when profile modal closes
+    const savedProfile = localStorage.getItem('userProfile');
+    if (savedProfile) {
+      const parsedProfile = JSON.parse(savedProfile);
+      setUserAvatar(parsedProfile.avatar);
+    }
+  };
   return (
     <div className="header">
       <div className="header-left">
@@ -54,10 +88,6 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
       </div>
       
       <div className="header-right">
-        <button className="header-btn primary" onClick={handleNewOrder}>
-          <span>+</span>
-          New
-        </button>
         <button className="header-btn secondary" onClick={handleQRMenuOrders}>
           <span>📋</span>
           QR Menu Orders
@@ -80,7 +110,11 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
             {isDarkMode ? '☀️' : '🌙'}
           </button>
           <button className="icon-btn" onClick={handleUserProfile} title="User Profile">
-            👤
+            {userAvatar ? (
+              <img src={userAvatar} alt="Profile" className="profile-avatar-icon" />
+            ) : (
+              '👤'
+            )}
           </button>
         </div>
       </div>
@@ -102,7 +136,10 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
       
       <UserProfile 
         isOpen={showUserProfile} 
-        onClose={() => setShowUserProfile(false)}
+        onClose={() => {
+          setShowUserProfile(false);
+          handleProfileUpdate();
+        }}
       />
       
       {/* Table Management Modal */}
@@ -118,6 +155,11 @@ const Header = ({ onNewOrder, onRestoreDraft, onEditDraft, onReturnToCart, draft
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Menu Orders Modal */}
+      {showQRMenuOrders && (
+        <QRMenuOrders onClose={() => setShowQRMenuOrders(false)} />
       )}
     </div>
   );

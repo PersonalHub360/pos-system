@@ -69,132 +69,6 @@ class ReportController {
 
       const params = [dateFrom, dateTo];
 
-      // Add filters
-      if (orderType) {
-        query += ` AND o.order_type = ?`;
-        params.push(orderType);
-      }
-
-      if (tableId) {
-        query += ` AND o.table_id = ?`;
-        params.push(tableId);
-      }
-
-      if (categoryId) {
-        query += ` AND EXISTS (
-          SELECT 1 FROM order_items oi2 
-          JOIN products p ON oi2.product_id = p.id 
-          WHERE oi2.order_id = o.id AND p.category_id = ?
-        )`;
-        params.push(categoryId);
-      }
-
-      query += ` GROUP BY ${dateGrouping} ORDER BY period DESC`;
-
-      const salesData = await this.executeQuery(query, params);
-
-      // Get summary statistics
-      const summaryQuery = `
-        SELECT 
-          COUNT(DISTINCT o.id) as total_orders,
-          SUM(CASE WHEN o.order_status = 'completed' THEN o.total ELSE 0 END) as total_revenue,
-          AVG(CASE WHEN o.order_status = 'completed' THEN o.total END) as avg_order_value,
-          COUNT(DISTINCT CASE WHEN o.order_status = 'completed' THEN o.customer_id END) as unique_customers,
-          COUNT(DISTINCT DATE(o.created_at)) as active_days,
-          MAX(o.total) as highest_order_value,
-          MIN(CASE WHEN o.order_status = 'completed' AND o.total > 0 THEN o.total END) as lowest_order_value
-        FROM orders o
-        WHERE DATE(o.created_at) BETWEEN ? AND ?
-      `;
-
-      const [summary] = await this.executeQuery(summaryQuery, [dateFrom, dateTo]);
-
-      // Get top products if details requested
-      let topProducts = [];
-      let paymentMethods = [];
-      let hourlyData = [];
-
-      if (includeDetails) {
-        // Top products
-        const topProductsQuery = `
-          SELECT 
-            p.name,
-            p.price,
-            SUM(oi.quantity) as total_quantity,
-            SUM(oi.subtotal) as total_revenue,
-            COUNT(DISTINCT oi.order_id) as order_count
-          FROM order_items oi
-          JOIN products p ON oi.product_id = p.id
-          JOIN orders o ON oi.order_id = o.id
-          WHERE DATE(o.created_at) BETWEEN ? AND ?
-            AND o.order_status = 'completed'
-          GROUP BY p.id, p.name, p.price
-          ORDER BY total_revenue DESC
-          LIMIT 10
-        `;
-        topProducts = await this.executeQuery(topProductsQuery, [dateFrom, dateTo]);
-
-        // Payment methods breakdown
-        const paymentQuery = `
-          SELECT 
-            payment_method,
-            COUNT(*) as transaction_count,
-            SUM(total) as total_amount,
-            AVG(total) as avg_amount
-          FROM orders
-          WHERE DATE(created_at) BETWEEN ? AND ?
-            AND order_status = 'completed'
-          GROUP BY payment_method
-          ORDER BY total_amount DESC
-        `;
-        paymentMethods = await this.executeQuery(paymentQuery, [dateFrom, dateTo]);
-
-        // Hourly performance
-        const hourlyQuery = `
-          SELECT 
-            strftime('%H', created_at) as hour,
-            COUNT(*) as order_count,
-            SUM(total) as revenue,
-            AVG(total) as avg_order_value
-          FROM orders
-          WHERE DATE(created_at) BETWEEN ? AND ?
-            AND order_status = 'completed'
-          GROUP BY strftime('%H', created_at)
-          ORDER BY revenue DESC
-        `;
-        hourlyData = await this.executeQuery(hourlyQuery, [dateFrom, dateTo]);
-      }
-
-      res.json({
-        success: true,
-        data: {
-          summary,
-          salesData,
-          topProducts,
-          paymentMethods,
-          hourlyData,
-          period: { dateFrom, dateTo },
-          groupBy,
-          filters: { orderType, tableId, categoryId }
-        }
-      });
-
-    } catch (error) {
-      console.error('Error generating sales report:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Failed to generate sales report',
-        error: error.message
-      });
-    }
-  }
-        FROM orders o
-        LEFT JOIN order_items oi ON o.id = oi.order_id
-        WHERE DATE(o.created_at) BETWEEN ? AND ?
-      `;
-
-      const params = [dateFrom, dateTo];
-
       if (orderType) {
         query += ' AND o.order_type = ?';
         params.push(orderType);
@@ -213,6 +87,169 @@ class ReportController {
       query += ` GROUP BY ${dateGrouping} ORDER BY period`;
 
       const salesData = await this.executeQuery(query, params);
+
+      // Get summary totals
+      const summaryQuery = `
+        SELECT 
+          COUNT(DISTINCT o.id) as total_orders,
+          COUNT(DISTINCT CASE WHEN o.order_status = 'completed' THEN o.id END) as completed_orders,
+          SUM(CASE WHEN o.order_status = 'completed' THEN o.total ELSE 0 END) as total_revenue,
+          AVG(CASE WHEN o.order_status = 'completed' THEN o.total END) as average_order_value,
+          COUNT(DISTINCT o.table_id) as tables_served,
+          COUNT(DISTINCT DATE(o.created_at)) as active_days
+        FROM orders o
+        WHERE DATE(o.created_at) BETWEEN ? AND ?
+        ${orderType ? 'AND o.order_type = ?' : ''}
+        ${tableId ? 'AND o.table_id = ?' : ''}
+      `;
+
+      const summaryParams = [dateFrom, dateTo];
+      if (orderType) summaryParams.push(orderType);
+      if (tableId) summaryParams.push(tableId);
+
+      const summary = await this.executeQuery(summaryQuery, summaryParams);
+
+      res.json({
+        success: true,
+        data: {
+          summary: summary[0],
+          salesData,
+          period: { dateFrom, dateTo, dateGrouping }
+        }
+      });
+    } catch (error) {
+      console.error('Error generating product report:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate product report',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get inventory report
+   */
+  async getInventoryReport(req, res) {
+    try {
+      const { categoryId, lowStockOnly } = req.query;
+
+      // Build inventory query
+      let query = `
+        SELECT 
+          i.*,
+          p.name,
+          p.description,
+          p.price,
+          p.category_id,
+          p.image_url,
+          c.name as category_name,
+          s.name as supplier_name,
+          s.contact_person as supplier_contact,
+          CASE 
+            WHEN i.current_stock <= i.reorder_level THEN 1 
+            ELSE 0 
+          END as is_low_stock
+        FROM inventory i
+        JOIN products p ON i.product_id = p.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        LEFT JOIN suppliers s ON i.supplier_id = s.id
+        WHERE p.is_active = 1 AND i.is_trackable = 1
+      `;
+
+      const params = [];
+
+      if (categoryId) {
+        query += ' AND p.category_id = ?';
+        params.push(categoryId);
+      }
+
+      if (lowStockOnly === 'true') {
+        query += ' AND i.current_stock <= i.reorder_level';
+      }
+
+      query += ' ORDER BY c.name, p.name';
+
+      const inventoryData = await this.executeQuery(query, params);
+
+      // Get inventory summary
+      const summaryQuery = `
+        SELECT 
+          COUNT(*) as total_products,
+          SUM(i.current_stock * i.cost_price) as total_inventory_value,
+          COUNT(CASE WHEN i.current_stock <= i.reorder_level THEN 1 END) as low_stock_items,
+          COUNT(CASE WHEN i.current_stock >= i.max_stock THEN 1 END) as overstock_items,
+          AVG(i.current_stock * i.cost_price) as average_product_value
+        FROM inventory i
+        JOIN products p ON i.product_id = p.id
+        WHERE p.is_active = 1 AND i.is_trackable = 1
+        ${categoryId ? 'AND p.category_id = ?' : ''}
+      `;
+
+      const summaryParams = categoryId ? [categoryId] : [];
+      const summary = await this.executeQuery(summaryQuery, summaryParams);
+
+      res.json({
+        success: true,
+        data: {
+          summary: summary[0],
+          inventoryData,
+          filters: { categoryId, lowStockOnly }
+        }
+      });
+    } catch (error) {
+      console.error('Error generating inventory report:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate inventory report',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Get product performance report
+   */
+  async getProductReport(req, res) {
+    try {
+      const { dateFrom, dateTo, categoryId, orderType, tableId } = req.query;
+
+      // Validate date parameters
+      if (!dateFrom || !dateTo) {
+        return res.status(400).json({
+          success: false,
+          message: 'Date range is required (dateFrom and dateTo)'
+        });
+      }
+
+      // Determine date grouping based on date range
+      const startDate = new Date(dateFrom);
+      const endDate = new Date(dateTo);
+      const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+      
+      let dateGrouping;
+      if (daysDiff <= 7) {
+        dateGrouping = "DATE(o.created_at)";
+      } else if (daysDiff <= 31) {
+        dateGrouping = "DATE(o.created_at)";
+      } else {
+        dateGrouping = "strftime('%Y-%m', o.created_at)";
+      }
+
+      // Build the main query
+      let query = `
+        SELECT 
+          ${dateGrouping} as period,
+          COUNT(DISTINCT o.id) as total_orders,
+          COUNT(DISTINCT CASE WHEN o.order_status = 'completed' THEN o.id END) as completed_orders,
+          SUM(CASE WHEN o.order_status = 'completed' THEN o.total ELSE 0 END) as total_revenue,
+          AVG(CASE WHEN o.order_status = 'completed' THEN o.total END) as average_order_value
+        FROM orders o
+        LEFT JOIN order_items oi ON o.id = oi.order_id
+        WHERE DATE(o.created_at) BETWEEN ? AND ?
+      `;
+
+      const params = [dateFrom, dateTo];
 
       // Get summary totals
       const summaryQuery = `

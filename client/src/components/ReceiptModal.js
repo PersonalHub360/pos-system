@@ -7,21 +7,72 @@ const ReceiptModal = ({
   receiptData, 
   onCompleteOrder 
 }) => {
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('cash');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('aba');
   const [processing, setProcessing] = useState(false);
 
   if (!isOpen || !receiptData) return null;
 
-  const handleCompleteOrder = () => {
+  const handleCompleteOrder = async () => {
     setProcessing(true);
     
-    // Simulate order processing
-    setTimeout(() => {
-      onCompleteOrder();
+    try {
+      // Trigger print before completing the order
+      window.print();
+      
+      // Update order status to completed via API
+      const response = await fetch(`http://localhost:5000/api/orders/${receiptData.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status: 'completed',
+          payment_method: selectedPaymentMethod,
+          completed_at: new Date().toISOString()
+        }),
+      });
+
+      if (response.ok) {
+        // Emit real-time dashboard update event
+        const orderCompletionData = {
+          id: receiptData.id,
+          total: receiptData.total,
+          payment_method: selectedPaymentMethod,
+          items: receiptData.items,
+          discount: receiptData.discount || 0,
+          subtotal: receiptData.subtotal,
+          timestamp: new Date().toISOString()
+        };
+
+        // Trigger dashboard refresh via custom event
+        window.dispatchEvent(new CustomEvent('orderCompleted', { 
+          detail: orderCompletionData 
+        }));
+
+        // Trigger inventory update event
+        window.dispatchEvent(new CustomEvent('inventoryUpdate', {
+          detail: {
+            type: 'items_sold',
+            items: receiptData.items.map(item => ({
+              product_id: item.id,
+              quantity: item.quantity
+            })),
+            timestamp: new Date().toISOString()
+          }
+        }));
+
+        onCompleteOrder();
+        setProcessing(false);
+        onClose();
+        alert(`Order completed successfully!\nPayment Method: ${selectedPaymentMethod.toUpperCase()}\nTotal: $${receiptData.total.toFixed(2)}`);
+      } else {
+        throw new Error('Failed to update order status');
+      }
+    } catch (error) {
+      console.error('Error completing order:', error);
       setProcessing(false);
-      onClose();
-      alert(`Order completed successfully!\nPayment Method: ${selectedPaymentMethod.toUpperCase()}\nTotal: $${receiptData.total.toFixed(2)}`);
-    }, 1500);
+      alert('Error completing order. Please try again.');
+    }
   };
 
   const handlePrint = () => {
@@ -46,15 +97,10 @@ const ReceiptModal = ({
             <p>Order ID: #{receiptData.id}</p>
           </div>
 
-          {/* Customer & Table Info - Only show if there's content */}
-          {(receiptData.table || receiptData.customer.name) && (
+          {/* Customer Info - Only show if there's content */}
+          {receiptData.customer.name && (
             <div className="order-info">
-              {receiptData.table && (
-                <p><strong>Table:</strong> {receiptData.table}</p>
-              )}
-              {receiptData.customer.name && (
-                <p><strong>Customer:</strong> {receiptData.customer.name}</p>
-              )}
+              <p><strong>Customer:</strong> {receiptData.customer.name}</p>
             </div>
           )}
 
@@ -100,22 +146,34 @@ const ReceiptModal = ({
             <h4>Select Payment Method</h4>
             <div className="payment-methods">
               <button 
+                className={`payment-method-btn ${selectedPaymentMethod === 'aba' ? 'active' : ''}`}
+                onClick={() => setSelectedPaymentMethod('aba')}
+              >
+                🏦 ABA
+              </button>
+              <button 
+                className={`payment-method-btn ${selectedPaymentMethod === 'acleda' ? 'active' : ''}`}
+                onClick={() => setSelectedPaymentMethod('acleda')}
+              >
+                🏛️ Acleda
+              </button>
+              <button 
+                className={`payment-method-btn ${selectedPaymentMethod === 'due' ? 'active' : ''}`}
+                onClick={() => setSelectedPaymentMethod('due')}
+              >
+                📋 Due
+              </button>
+              <button 
                 className={`payment-method-btn ${selectedPaymentMethod === 'cash' ? 'active' : ''}`}
                 onClick={() => setSelectedPaymentMethod('cash')}
               >
                 💵 Cash
               </button>
               <button 
-                className={`payment-method-btn ${selectedPaymentMethod === 'card' ? 'active' : ''}`}
-                onClick={() => setSelectedPaymentMethod('card')}
+                className={`payment-method-btn ${selectedPaymentMethod === 'cardpay' ? 'active' : ''}`}
+                onClick={() => setSelectedPaymentMethod('cardpay')}
               >
-                💳 Card
-              </button>
-              <button 
-                className={`payment-method-btn ${selectedPaymentMethod === 'digital' ? 'active' : ''}`}
-                onClick={() => setSelectedPaymentMethod('digital')}
-              >
-                📱 Digital
+                💳 Card Pay
               </button>
             </div>
           </div>

@@ -9,7 +9,12 @@ class AuditMiddleware {
   logApiRequest() {
     const auditService = this.auditService;
     
-    return async (req, res, next) => {
+    return (req, res, next) => {
+      // Skip audit logging for health check and auth endpoints to avoid circular issues
+      if (req.originalUrl === '/api/health' || req.originalUrl.includes('/api/auth/')) {
+        return next();
+      }
+
       // Store original end function
       const originalEnd = res.end;
       const startTime = Date.now();
@@ -18,40 +23,49 @@ class AuditMiddleware {
       res.end = function(chunk, encoding) {
         const responseTime = Date.now() - startTime;
         
-        // Log API request
-        if (req.user && auditService) {
-          const auditData = {
-            table_name: 'api_requests',
-            record_id: null,
-            action: 'API_REQUEST',
-            old_values: null,
-            new_values: {
-              method: req.method,
-              url: req.originalUrl,
-              status_code: res.statusCode,
-              response_time: responseTime,
-              body_size: chunk ? chunk.length : 0
-            },
-            user_id: req.user.id,
-            ip_address: req.ip,
-            user_agent: req.get('User-Agent'),
-            additional_info: {
-              query: req.query,
-              params: req.params
-            }
-          };
+        // Log API request (only for authenticated users or important endpoints)
+        if (auditService && (req.user || req.originalUrl.includes('/api/'))) {
+          try {
+            const auditData = {
+              table_name: 'api_requests',
+              record_id: null,
+              action: 'API_REQUEST',
+              old_values: null,
+              new_values: {
+                method: req.method,
+                url: req.originalUrl,
+                status_code: res.statusCode,
+                response_time: responseTime,
+                body_size: chunk ? chunk.length : 0
+              },
+              user_id: req.user ? req.user.id : null,
+              ip_address: req.ip,
+              user_agent: req.get('User-Agent'),
+              additional_info: {
+                query: req.query,
+                params: req.params
+              }
+            };
 
-          // Don't await to avoid blocking response
-          auditService.logAuditEvent(auditData).catch(err => {
-            console.error('API audit logging error:', err);
-          });
+            // Don't await to avoid blocking response
+            auditService.logAuditEvent(auditData).catch(err => {
+              console.error('API audit logging error:', err);
+            });
+          } catch (err) {
+            console.error('Audit middleware error:', err);
+          }
         }
 
         // Call original end function
         originalEnd.call(res, chunk, encoding);
       };
 
-      next();
+      try {
+        next();
+      } catch (err) {
+        console.error('Audit middleware next() error:', err);
+        next(err);
+      }
     };
   }
 

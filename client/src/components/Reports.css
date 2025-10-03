@@ -1,6 +1,6 @@
 .reports-container {
   padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
   min-height: 100vh;
   color: #333;
 }
@@ -37,7 +37,7 @@
 }
 
 .export-btn {
-  background: linear-gradient(135deg, #4CAF50, #45a049);
+  background: linear-gradient(135deg, #556B2F, #6B8E23);
   color: white;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -46,12 +46,12 @@
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+  box-shadow: 0 4px 15px rgba(85, 107, 47, 0.3);
 }
 
 .export-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 6px 20px rgba(85, 107, 47, 0.4);
 }
 
 .date-filters {
@@ -150,9 +150,9 @@
 }
 
 .tab-btn.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #556B2F, #6B8E23);
   color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 15px rgba(85, 107, 47, 0.3);
 }
 
 .reports-content {
@@ -214,7 +214,7 @@
 }
 
 .report-table th {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #556B2F, #6B8E23);
   color: white;
   padding: 1rem;
   text-align: left;
@@ -232,7 +232,7 @@
 }
 
 .report-table tr:hover {
-  background: rgba(102, 126, 234, 0.05);
+  background: rgba(85, 107, 47, 0.05);
 }
 
 .status-badge {
@@ -265,11 +265,11 @@
 }
 
 .financial-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #556B2F 0%, #6B8E23 100%);
   color: white;
   padding: 2rem;
   border-radius: 16px;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(85, 107, 47, 0.3);
 }
 
 .financial-card h4 {
@@ -320,8 +320,8 @@
 .loading-spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid rgba(102, 126, 234, 0.3);
-  border-left: 4px solid #667eea;
+  border: 4px solid rgba(85, 107, 47, 0.3);
+  border-left: 4px solid #556B2F;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;

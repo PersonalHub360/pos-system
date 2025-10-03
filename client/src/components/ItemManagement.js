@@ -264,10 +264,26 @@ const ItemManagement = ({
   const handleImport = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Mock import functionality
-      console.log('Importing file:', file.name);
-      alert(`File ${file.name} imported successfully`);
+      handleItemFileImport(e);
     }
+  };
+
+  const downloadItemSample = () => {
+    const sampleData = [
+      ['Name', 'Category', 'Price', 'Stock'],
+      ['Sample Item 1', 'Food', '12.99', '50'],
+      ['Sample Item 2', 'Beverages', '5.99', '25'],
+      ['Sample Item 3', 'Desserts', '8.50', '15']
+    ];
+
+    const csvContent = sampleData.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'item_sample.csv';
+    link.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const renderOverview = () => {
@@ -572,19 +588,141 @@ const ItemManagement = ({
     </div>
   );
 
-  const handleDownloadSample = () => {
-    const link = document.createElement('a');
-    link.href = '/sample-items.csv';
-    link.download = 'sample-items.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Enhanced import function for items
+  const handleItemFileImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target.result;
+        const lines = csv.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          alert('CSV file must contain at least a header row and one data row');
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        
+        // Flexible header matching
+        const getColumnIndex = (possibleNames) => {
+          for (const name of possibleNames) {
+            const index = headers.findIndex(h => h.includes(name.toLowerCase()));
+            if (index !== -1) return index;
+          }
+          return -1;
+        };
+
+        const nameIndex = getColumnIndex(['name', 'item', 'product']);
+        const categoryIndex = getColumnIndex(['category', 'type']);
+        const priceIndex = getColumnIndex(['price', 'cost', 'amount']);
+        const stockIndex = getColumnIndex(['stock', 'quantity', 'qty']);
+
+        if (nameIndex === -1) {
+          alert('CSV must contain a "Name" column');
+          return;
+        }
+
+        const newItems = [];
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim());
+          
+          if (values.length < headers.length) continue;
+
+          const name = values[nameIndex];
+          if (!name) {
+            errorCount++;
+            continue;
+          }
+
+          const category = categoryIndex !== -1 ? values[categoryIndex] : 'General';
+          const price = priceIndex !== -1 ? parseFloat(values[priceIndex]) || 0 : 0;
+          const stock = stockIndex !== -1 ? parseInt(values[stockIndex]) || 0 : 0;
+
+          const newItem = {
+            id: Date.now() + Math.random(),
+            name,
+            category,
+            price,
+            stock,
+            status: 'active',
+            createdAt: new Date().toISOString()
+          };
+
+          newItems.push(newItem);
+          successCount++;
+        }
+
+        if (newItems.length > 0) {
+          setProducts(prevProducts => [...prevProducts, ...newItems]);
+          
+          // Add new categories if they don't exist
+          const newCategories = [...new Set(newItems.map(item => item.category))];
+          newCategories.forEach(cat => {
+            if (!categories.find(c => c.name === cat)) {
+              setCategories(prev => [...prev, { id: Date.now() + Math.random(), name: cat }]);
+            }
+          });
+        }
+
+        alert(`Import completed!\nSuccessful: ${successCount} items\nErrors: ${errorCount} items`);
+        event.target.value = '';
+        
+      } catch (error) {
+        console.error('Import error:', error);
+        alert('Error processing file. Please check the format and try again.');
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   const renderImportExport = () => (
     <div className="import-export-section">
       <div className="section-header">
         <h3>Import & Export</h3>
+      </div>
+      
+      {/* Enhanced Import Section */}
+      <div className="items-import-section">
+        <div className="import-header">
+          <h3>📥 Import Items</h3>
+          <p>Upload CSV files to bulk import item data</p>
+        </div>
+        <div className="import-actions">
+          <div className="import-upload">
+            <input
+              type="file"
+              id="items-file-input"
+              accept=".csv"
+              onChange={handleItemFileImport}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="import-btn upload-btn"
+              onClick={() => document.getElementById('items-file-input').click()}
+            >
+              <span>📁</span>
+              Choose CSV File
+            </button>
+          </div>
+          <button 
+            className="import-btn sample-btn"
+            onClick={downloadItemSample}
+          >
+            <span>📋</span>
+            Download Sample
+          </button>
+        </div>
+        <div className="import-info">
+          <p>💡 <strong>CSV Format:</strong> Name, Category, Price, Stock</p>
+          <p>📝 Download the sample file to see the correct format</p>
+        </div>
       </div>
       
       <div className="import-export-content">
@@ -610,36 +748,6 @@ const ItemManagement = ({
             >
               📄 Export as PDF
             </button>
-          </div>
-        </div>
-        
-        <div className="import-section">
-          <h4>Import Items</h4>
-          <p>Upload a file to bulk add or update items</p>
-          
-          <div className="sample-file-section">
-            <h5>📋 Sample File</h5>
-            <p>Download a sample file to understand the required format</p>
-            <button 
-              className="sample-btn"
-              onClick={handleDownloadSample}
-            >
-              📥 Download Sample CSV
-            </button>
-          </div>
-          
-          <div className="import-area">
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleImport}
-              className="import-input"
-              id="import-file"
-            />
-            <label htmlFor="import-file" className="import-label">
-              📤 Choose File to Import
-            </label>
-            <p className="import-hint">Supports CSV and Excel formats</p>
           </div>
         </div>
       </div>

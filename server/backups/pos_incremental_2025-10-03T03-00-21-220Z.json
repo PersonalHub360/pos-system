@@ -1,0 +1,7 @@
+{
+  "type": "incremental",
+  "since": "2025-10-03T02:00:21.220Z",
+  "created_at": "2025-10-03T03:00:21.301Z",
+  "description": "Scheduled hourly backup",
+  "data": {}
+}

@@ -197,6 +197,103 @@ const Purchase = () => {
     }
   };
 
+  // Import functionality
+  const handlePurchaseFileImport = (event) => {
+    const file = event.target.file[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target.result;
+        const lines = csv.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          alert('CSV file must contain at least a header row and one data row');
+          return;
+        }
+
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+        
+        // Flexible header matching for purchase orders
+        const supplierIndex = headers.findIndex(h => 
+          h.includes('supplier') || h.includes('vendor') || h.includes('company')
+        );
+        const itemsIndex = headers.findIndex(h => 
+          h.includes('items') || h.includes('products') || h.includes('description')
+        );
+        const totalIndex = headers.findIndex(h => 
+          h.includes('total') || h.includes('amount') || h.includes('price')
+        );
+        const statusIndex = headers.findIndex(h => 
+          h.includes('status') || h.includes('state')
+        );
+
+        if (supplierIndex === -1 || totalIndex === -1) {
+          alert('CSV must contain at least Supplier and Total columns');
+          return;
+        }
+
+        const importedOrders = [];
+        for (let i = 1; i < lines.length; i++) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          
+          if (values.length >= Math.max(supplierIndex, totalIndex) + 1) {
+            const newOrder = {
+              id: `PO${String(purchaseOrders.length + importedOrders.length + 1).padStart(3, '0')}`,
+              supplier: values[supplierIndex] || 'Unknown Supplier',
+              date: new Date().toISOString().split('T')[0],
+              status: statusIndex !== -1 ? values[statusIndex] : 'Pending',
+              total: parseFloat(values[totalIndex]) || 0,
+              items: itemsIndex !== -1 && values[itemsIndex] 
+                ? [{ name: values[itemsIndex], quantity: 1, price: parseFloat(values[totalIndex]) || 0 }]
+                : [{ name: 'Imported Item', quantity: 1, price: parseFloat(values[totalIndex]) || 0 }]
+            };
+            importedOrders.push(newOrder);
+          }
+        }
+
+        if (importedOrders.length > 0) {
+          setPurchaseOrders([...purchaseOrders, ...importedOrders]);
+          alert(`Successfully imported ${importedOrders.length} purchase orders!`);
+        } else {
+          alert('No valid purchase orders found in the CSV file');
+        }
+      } catch (error) {
+        alert('Error parsing CSV file. Please check the format and try again.');
+        console.error('CSV parsing error:', error);
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
+  };
+
+  const downloadPurchaseSample = () => {
+    const sampleData = [
+      ['Supplier', 'Items', 'Total', 'Status'],
+      ['ABC Supplies', 'Coffee Beans, Sugar', '1250.00', 'Pending'],
+      ['XYZ Distributors', 'Milk, Bread', '850.00', 'Received'],
+      ['Fresh Foods Inc', 'Vegetables, Fruits', '650.00', 'Pending'],
+      ['Office Supplies Co', 'Paper, Pens', '125.00', 'Completed']
+    ];
+
+    const csvContent = sampleData.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'purchase_orders_sample.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleDeleteOrder = (orderId) => {
     if (window.confirm(`Are you sure you want to delete order ${orderId}?`)) {
       setPurchaseOrders(purchaseOrders.filter(order => order.id !== orderId));
@@ -218,6 +315,43 @@ const Purchase = () => {
         }}>
           + Create Order
         </button>
+      </div>
+
+      {/* Import Section */}
+      <div className="purchase-import-section">
+        <div className="import-header">
+          <h3>📥 Import Purchase Orders</h3>
+          <p>Upload CSV files to bulk import purchase order data</p>
+        </div>
+        <div className="import-actions">
+          <div className="import-upload">
+            <input
+              type="file"
+              id="purchase-file-input"
+              accept=".csv"
+              onChange={handlePurchaseFileImport}
+              style={{ display: 'none' }}
+            />
+            <button 
+              className="import-btn upload-btn"
+              onClick={() => document.getElementById('purchase-file-input').click()}
+            >
+              <span>📁</span>
+              Choose CSV File
+            </button>
+          </div>
+          <button 
+            className="import-btn sample-btn"
+            onClick={downloadPurchaseSample}
+          >
+            <span>📋</span>
+            Download Sample
+          </button>
+        </div>
+        <div className="import-info">
+          <p>💡 <strong>CSV Format:</strong> Supplier, Items, Total, Status</p>
+          <p>📝 Download the sample file to see the correct format</p>
+        </div>
       </div>
       
       <div className="orders-table">
