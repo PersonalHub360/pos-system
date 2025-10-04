@@ -87,11 +87,6 @@ app.get('/api/health', (req, res) => {
 // Start scheduled integrity checks
 auditMiddleware.scheduleIntegrityChecks();
 
-// Mount API routes
-const initializeRoutes = require('./routes/api');
-const apiRoutes = initializeRoutes(db);
-app.use('/api', apiRoutes);
-
 // Initialize database tables
 db.serialize(() => {
   // Categories table
@@ -633,6 +628,11 @@ app.put('/api/orders/:id', (req, res) => {
     res.json({ message: 'Order updated successfully' });
   });
 });
+
+// Mount API routes
+const initializeRoutes = require('./routes/api');
+const apiRoutes = initializeRoutes(db);
+app.use('/api', apiRoutes);
 
 // Start server
 server.listen(PORT, () => {

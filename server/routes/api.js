@@ -12,6 +12,7 @@ const ReportController = require('../controllers/reportController');
 const DashboardController = require('../controllers/dashboardController');
 const AuditController = require('../controllers/auditController');
 const BackupController = require('../controllers/backupController');
+const SalesController = require('../controllers/salesController');
 
 // Import middleware
 const AuthMiddleware = require('../middleware/auth');
@@ -29,6 +30,7 @@ function initializeRoutes(db) {
   const dashboardController = new DashboardController(db);
   const auditController = new AuditController(db);
   const backupController = new BackupController(db);
+  const salesController = new SalesController(db);
 
   // Initialize middleware
   const authMiddleware = new AuthMiddleware(db);
@@ -151,6 +153,23 @@ function initializeRoutes(db) {
   
   // Report export
   router.get('/reports/export', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => reportController.exportReport(req, res));
+
+  // ============================================================================
+  // SALES MANAGEMENT ROUTES
+  // ============================================================================
+  
+  // Sales management
+  router.get('/sales', authMiddleware.verifyToken, (req, res) => salesController.getAllSales(req, res));
+  router.get('/sales/:id', authMiddleware.verifyToken, (req, res) => salesController.getSaleById(req, res));
+  router.post('/sales', authMiddleware.verifyToken, (req, res) => salesController.createSale(req, res));
+  router.put('/sales/:id/status', authMiddleware.verifyToken, (req, res) => salesController.updateSaleStatus(req, res));
+  
+  // Discount plans management
+  router.get('/sales/discount-plans', authMiddleware.verifyToken, (req, res) => salesController.getDiscountPlans(req, res));
+  router.post('/sales/discount-plans', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => salesController.createDiscountPlan(req, res));
+  
+  // Sales analytics
+  router.get('/sales/analytics/summary', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => salesController.getSalesAnalytics(req, res));
 
   // ============================================================================
   // SYSTEM ROUTES

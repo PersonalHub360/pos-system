@@ -22,6 +22,7 @@ import Settings from './components/Settings';
 import Purchase from './components/Purchase';
 import StockInformation from './components/StockInformation';
 import ExpenseInformation from './components/ExpenseInformation';
+import SalesManage from './components/SalesManage';
 import AddProduct from './components/AddProduct';
 import axios from 'axios';
 
@@ -353,6 +354,15 @@ function App() {
     
     if (currentView === 'sales management') {
       return <SalesManagement />;
+    }
+
+    // Handle Sales Manage menu and its submenu items
+    if (currentView === 'sales manage' || 
+        currentView === 'add-sales' || 
+        currentView === 'sales-list' || 
+        currentView === 'sales-discount-plan' || 
+        currentView === 'import-sale') {
+      return <SalesManage />;
     }
     
     if (currentView === 'reports') {

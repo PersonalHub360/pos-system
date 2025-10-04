@@ -7,6 +7,13 @@ const Sidebar = ({ onNavigate, currentView = 'pos', isVisible = true, onToggle }
   const menuItems = [
       { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6', gradient: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' },
       { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981', gradient: 'linear-gradient(135deg, #10B981, #047857)' },
+      { 
+        icon: '💰', 
+        label: 'Sales Manage', 
+        active: currentView === 'sales manage', 
+        color: '#06B6D4', 
+        gradient: 'linear-gradient(135deg, #06B6D4, #0891B2)'
+      },
       { icon: '📦', label: 'Items', active: currentView === 'items', color: '#F59E0B', gradient: 'linear-gradient(135deg, #F59E0B, #D97706)' },
       { icon: '🛒', label: 'Purchase', active: currentView === 'purchase', color: '#8B5CF6', gradient: 'linear-gradient(135deg, #8B5CF6, #7C3AED)' },
       { icon: '📋', label: 'Stock Information', active: currentView === 'stock information', color: '#7C3AED', gradient: 'linear-gradient(135deg, #7C3AED, #6D28D9)' },
