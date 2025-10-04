@@ -259,6 +259,30 @@ CREATE TABLE IF NOT EXISTS customers (
 );
 
 -- =============================================
+-- DISCOUNT MANAGEMENT
+-- =============================================
+
+-- Discount Plans
+CREATE TABLE IF NOT EXISTS discount_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    discount_type TEXT NOT NULL, -- 'percentage', 'fixed_amount'
+    discount_value DECIMAL(10,2) NOT NULL,
+    min_order_amount DECIMAL(10,2) DEFAULT 0,
+    max_discount_amount DECIMAL(10,2),
+    valid_from DATE,
+    valid_to DATE,
+    usage_limit INTEGER,
+    used_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active', -- 'active', 'inactive', 'expired'
+    created_by INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users (id)
+);
+
+-- =============================================
 -- REPORTING AND ANALYTICS
 -- =============================================
 

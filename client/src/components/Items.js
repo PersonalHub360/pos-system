@@ -502,6 +502,7 @@ const Items = ({
 
   // Category management functionality
   const [categoryList, setCategoryList] = useState([]);
+  const [categoryLoading, setCategoryLoading] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
 
@@ -510,14 +511,22 @@ const Items = ({
   const [stockQuantity, setStockQuantity] = useState('');
   const [stockOperation, setStockOperation] = useState('add'); // 'add' or 'set'
   const fetchCategoriesForModal = async () => {
+    setCategoryLoading(true);
     try {
       const response = await fetch('http://localhost:5000/api/categories');
       if (response.ok) {
         const data = await response.json();
-        setCategoryList(data);
+        // Ensure data is an array before setting it
+        setCategoryList(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch categories:', response.status);
+        setCategoryList([]);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategoryList([]);
+    } finally {
+      setCategoryLoading(false);
     }
   };
 
@@ -532,6 +541,7 @@ const Items = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({ name: newCategory.trim() }),
       });
@@ -541,7 +551,8 @@ const Items = ({
         fetchCategoriesForModal();
         onRefreshData(); // Refresh the main categories list
       } else {
-        alert('Error adding category');
+        const errorData = await response.json();
+        alert('Error adding category: ' + (errorData.error || 'Unknown error'));
       }
     } catch (error) {
       alert('Error adding category: ' + error.message);
@@ -801,11 +812,16 @@ const Items = ({
 
           <div className="category-list">
             <h3>Existing Categories</h3>
-            {categoryList.length === 0 ? (
+            {categoryLoading ? (
+              <div className="loading-state">
+                <div className="loading-spinner"></div>
+                <p>Loading categories...</p>
+              </div>
+            ) : categoryList && categoryList.length === 0 ? (
               <p className="no-categories">No categories found. Add your first category above.</p>
             ) : (
               <div className="category-items">
-                {categoryList.map((category) => (
+                {categoryList && categoryList.map((category) => (
                   <div key={category.id} className="category-item">
                     {editingCategory === category.id ? (
                       <div className="category-edit-group">
@@ -1138,7 +1154,10 @@ const Items = ({
           <p>Manage your inventory items and product catalog</p>
         </div>
         <div className="header-actions">
-          <button className="btn-secondary" onClick={() => setShowCategoryModal(true)}>
+          <button className="btn-secondary" onClick={() => {
+            setShowCategoryModal(true);
+            fetchCategoriesForModal();
+          }}>
             🏷️ Categories
           </button>
           <button className="btn-secondary" onClick={() => setShowImportModal(true)}>

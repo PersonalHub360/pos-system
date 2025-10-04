@@ -475,7 +475,7 @@ class ProductController {
 
   async createCategory(req, res) {
     try {
-      const { name, description } = req.body;
+      const { name } = req.body;
 
       if (!name || !name.trim()) {
         return res.status(400).json({
@@ -497,10 +497,17 @@ class ProductController {
         });
       }
 
-      const result = await this.executeQuery(
-        'INSERT INTO categories (name, description) VALUES (?, ?)',
-        [name.trim(), description || '']
-      );
+      // Use db.run for INSERT operations
+      const result = await new Promise((resolve, reject) => {
+        this.db.run(
+          'INSERT INTO categories (name) VALUES (?)',
+          [name.trim()],
+          function(err) {
+            if (err) reject(err);
+            else resolve({ lastID: this.lastID });
+          }
+        );
+      });
 
       const newCategory = await this.executeQuery(
         'SELECT * FROM categories WHERE id = ?',

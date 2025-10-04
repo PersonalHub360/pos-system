@@ -6,10 +6,11 @@ import {
 import { 
   FaShoppingCart, FaDollarSign, FaUsers, FaBox, 
   FaArrowUp, FaArrowDown, FaCalendarAlt, FaFilter,
-  FaClock, FaPercentage, FaTrendingUp, FaTrendingDown
+  FaClock, FaPercentage, FaChartLine
 } from 'react-icons/fa';
 import { useData } from '../contexts/DataContext';
 import './Dashboard.css';
+import './DashboardModern.css';
 import io from 'socket.io-client';
 import websocketClient from '../utils/websocket';
 
@@ -394,26 +395,7 @@ const Dashboard = () => {
         </p>
       </div>
       
-      <div className="header-stats-preview">
-        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '200ms' }}>
-          <div className="mini-stat-value pulse-animation">
-            {formatCurrency(metrics.dailySales)}
-          </div>
-          <div className="mini-stat-label">Today's Sales</div>
-        </div>
-        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '400ms' }}>
-          <div className="mini-stat-value pulse-animation">
-            {orders.length}
-          </div>
-          <div className="mini-stat-label">Total Orders</div>
-        </div>
-        <div className="mini-stat animate-mini-stat" style={{ animationDelay: '600ms' }}>
-          <div className="mini-stat-value pulse-animation">
-            {calculateGrowth(metrics.dailySales, metrics.yesterdaySales)}%
-          </div>
-          <div className="mini-stat-label">Growth</div>
-        </div>
-      </div>
+
       
       <div className="date-filter-container">
         <DateFilterButtons />
@@ -423,77 +405,249 @@ const Dashboard = () => {
 
   // Sales Performance Section with enhanced visual design
   const SalesPerformanceSection = () => (
-    <div className="dashboard-section sales-performance-section animate-section" style={{ animationDelay: '100ms' }}>
-      <div className="section-header">
-        <h2 className="animate-section-title">
-          💰 Sales Performance
-        </h2>
-        <p className="animate-section-subtitle">
-          Track your revenue and payment methods in real-time
-        </p>
+    <div className="dashboard-section sales-modern-section animate-section" style={{ animationDelay: '100ms' }}>
+      <div className="section-header modern-header">
+        <div className="header-content">
+          <div className="header-icon-wrapper">
+            <FaChartLine className="header-icon" />
+          </div>
+          <div className="header-text">
+            <h2 className="modern-section-title">Sales Performance</h2>
+            <p className="modern-section-subtitle">Track revenue streams and payment methods in real-time</p>
+          </div>
+        </div>
       </div>
-      <div className="sales-metrics-grid">
-        <div className="sales-metric-card aba-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '200ms' }}>
-          <div className="metric-icon">🏦</div>
-          <div className="metric-content">
-            <h3>ABA Sales</h3>
-            <div className="metric-value">{formatCurrency(metrics.abaSales || 0)}</div>
-            <div className="metric-trend trend-up">+6.8%</div>
+      
+      <div className="sales-modern-grid">
+        <div className="sales-modern-card aba-sales-card animate-sales-modern" style={{ animationDelay: '100ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern aba-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container blue-gradient">
+                <FaDollarSign className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge positive-trend">
+                <FaArrowUp className="trend-icon" />
+                <span className="trend-value">+6.8%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">ABA Sales</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.abaSales || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Bank transfer payments</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar blue-bar">
+                    <div className="progress-fill" style={{ width: '68%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent blue-accent"></div>
         </div>
         
-        <div className="sales-metric-card acleda-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '300ms' }}>
-          <div className="metric-icon">🏛️</div>
-          <div className="metric-content">
-            <h3>Acleda Sales</h3>
-            <div className="metric-value">{formatCurrency(metrics.acledaSales || 0)}</div>
-            <div className="metric-trend trend-up">+4.2%</div>
+        <div className="sales-modern-card acleda-sales-card animate-sales-modern" style={{ animationDelay: '200ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern acleda-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container emerald-gradient">
+                <FaChartLine className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge positive-trend">
+                <FaArrowUp className="trend-icon" />
+                <span className="trend-value">+4.2%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Acleda Sales</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.acledaSales || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Acleda bank payments</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar emerald-bar">
+                    <div className="progress-fill" style={{ width: '42%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent emerald-accent"></div>
         </div>
         
-        <div className="sales-metric-card due-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '400ms' }}>
-          <div className="metric-icon">⏰</div>
-          <div className="metric-content">
-            <h3>Due Sales</h3>
-            <div className="metric-value">{formatCurrency(metrics.dueSales || 0)}</div>
-            <div className="metric-trend trend-down">-2.1%</div>
+        <div className="sales-modern-card due-sales-card animate-sales-modern" style={{ animationDelay: '300ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern due-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container amber-gradient">
+                <FaClock className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge negative-trend">
+                <FaArrowDown className="trend-icon" />
+                <span className="trend-value">-2.1%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Due Sales</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.dueSales || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Pending payments</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar amber-bar">
+                    <div className="progress-fill" style={{ width: '21%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent amber-accent"></div>
         </div>
         
-        <div className="sales-metric-card cash-sales hover-lift interactive-element animate-metric-card" style={{ animationDelay: '500ms' }}>
-          <div className="metric-icon">💵</div>
-          <div className="metric-content">
-            <h3>Cash Sales</h3>
-            <div className="metric-value">{formatCurrency(metrics.cashSales || 0)}</div>
-            <div className="metric-trend trend-neutral">+1.5%</div>
+        <div className="sales-modern-card cash-sales-card animate-sales-modern" style={{ animationDelay: '400ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern cash-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container purple-gradient">
+                <FaDollarSign className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge neutral-trend">
+                <FaArrowUp className="trend-icon" />
+                <span className="trend-value">+1.5%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Cash Sales</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.cashSales || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Cash transactions</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar purple-bar">
+                    <div className="progress-fill" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent purple-accent"></div>
         </div>
         
-        <div className="sales-metric-card sales-revenue hover-lift interactive-element animate-metric-card" style={{ animationDelay: '600ms' }}>
-          <div className="metric-icon">📈</div>
-          <div className="metric-content">
-            <h3>Sales Revenue</h3>
-            <div className="metric-value">{formatCurrency(metrics.dailySales || 0)}</div>
-            <div className="metric-trend trend-up">+12.5%</div>
+        <div className="sales-modern-card revenue-card animate-sales-modern" style={{ animationDelay: '500ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern revenue-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container rose-gradient">
+                <FaChartLine className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge positive-trend">
+                <FaArrowUp className="trend-icon" />
+                <span className="trend-value">+12.5%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Sales Revenue</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.dailySales || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Total daily revenue</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar rose-bar">
+                    <div className="progress-fill" style={{ width: '85%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent rose-accent"></div>
         </div>
         
-        <div className="sales-metric-card sales-return hover-lift interactive-element animate-metric-card" style={{ animationDelay: '700ms' }}>
-          <div className="metric-icon">🔄</div>
-          <div className="metric-content">
-            <h3>Sales Return</h3>
-            <div className="metric-value">{formatCurrency(metrics.salesReturn || 0)}</div>
-            <div className="metric-trend trend-down">-1.2%</div>
+        <div className="sales-modern-card return-card animate-sales-modern" style={{ animationDelay: '600ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern return-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container red-gradient">
+                <FaArrowDown className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge negative-trend">
+                <FaArrowDown className="trend-icon" />
+                <span className="trend-value">-1.2%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Sales Return</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{formatCurrency(metrics.salesReturn || 0)}</span>
+                <span className="sales-unit">USD</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Returned items</span>
+                <div className="progress-indicator">
+                  <div className="progress-bar red-bar">
+                    <div className="progress-fill" style={{ width: '12%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent red-accent"></div>
         </div>
         
-        <div className="sales-metric-card profit-margin hover-lift interactive-element animate-metric-card" style={{ animationDelay: '800ms' }}>
-          <div className="metric-icon">💹</div>
-          <div className="metric-content">
-            <h3>Profit Margin</h3>
-            <div className="metric-value">{metrics.profitMargin || 0}%</div>
-            <div className="metric-trend trend-up">+2.1%</div>
+        <div className="sales-modern-card profit-card animate-sales-modern" style={{ animationDelay: '700ms' }}>
+          <div className="sales-card-background">
+            <div className="background-pattern profit-pattern"></div>
           </div>
+          <div className="sales-card-content">
+            <div className="sales-header">
+              <div className="sales-icon-container teal-gradient">
+                <FaPercentage className="sales-icon" />
+              </div>
+              <div className="sales-trend-badge positive-trend">
+                <FaArrowUp className="trend-icon" />
+                <span className="trend-value">+2.1%</span>
+              </div>
+            </div>
+            <div className="sales-main-content">
+              <h3 className="sales-title">Profit Margin</h3>
+              <div className="sales-value-container">
+                <span className="sales-value">{metrics.profitMargin || 0}%</span>
+                <span className="sales-unit">Rate</span>
+              </div>
+              <div className="sales-description">
+                <span className="description-label">Overall profitability</span>
+                <div className="progress-indicator">
+                  <div className="progress-circle teal-circle">
+                    <span className="circle-value">{metrics.profitMargin || 0}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="sales-visual-accent teal-accent"></div>
         </div>
       </div>
     </div>
@@ -542,50 +696,130 @@ const Dashboard = () => {
   );
 
   // Enhanced Recent Activity Section with improved animations
+  // Enhanced Recent Activity Section with card-based design
   const RecentActivitySection = () => {
     return (
-      <div className="dashboard-section animate-section" style={{ animationDelay: '400ms' }}>
-        <div className="section-header">
-          <h2 className="animate-section-title">
-            🕒 Recent Activity
-          </h2>
-          <p className="animate-section-subtitle">
-            Latest orders and transactions
-          </p>
-        </div>
-        <div className="recent-orders">
-          <div className="orders-container">
-            {orders && orders.length > 0 ? (
-              <div className="orders-table">
-                <div className="table-header">
-                  <span>Order ID</span>
-                  <span>Customer</span>
-                  <span>Total</span>
-                  <span>Status</span>
-                </div>
-                {orders.slice(0, 5).map((order, index) => (
-                  <div 
-                    key={order._id} 
-                    className="table-row animate-metric-card hover-lift interactive-element"
-                    style={{ animationDelay: `${600 + index * 100}ms` }}
-                  >
-                    <span className="order-id">#{(order._id || '').slice(-6)}</span>
-                    <span className="customer-name">{order.customerName || 'Walk-in Customer'}</span>
-                    <span className="order-total">{formatCurrency(order.total)}</span>
-                    <span className={`order-status status-${order.status}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="no-orders animate-metric-card" style={{ animationDelay: '600ms' }}>
-                <div className="no-orders-icon">📋</div>
-                <p>No recent orders found</p>
-                <small>Orders will appear here once you start making sales</small>
-              </div>
-            )}
+      <div className="dashboard-section activity-modern-section animate-section" style={{ animationDelay: '400ms' }}>
+        <div className="section-header modern-header">
+          <div className="header-content">
+            <div className="header-icon-wrapper activity-header-icon">
+              <FaClock className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="modern-section-title">Recent Activity</h2>
+              <p className="modern-section-subtitle">Latest orders and transactions in real-time</p>
+            </div>
           </div>
+        </div>
+        
+        <div className="activity-modern-grid">
+          {orders && orders.length > 0 ? (
+            orders.slice(0, 6).map((order, index) => (
+              <div 
+                key={order._id} 
+                className="activity-modern-card animate-activity-modern hover-lift-modern"
+                style={{ animationDelay: `${100 + index * 50}ms` }}
+              >
+                <div className="activity-card-background">
+                  <div className="background-pattern activity-pattern"></div>
+                  <div className="activity-floating-shapes">
+                    <div className="shape shape-1"></div>
+                    <div className="shape shape-2"></div>
+                  </div>
+                </div>
+                
+                <div className="activity-card-content">
+                  <div className="activity-header">
+                    <div className="activity-icon-container gradient-purple">
+                      <FaShoppingCart className="activity-icon" />
+                    </div>
+                    <div className={`activity-status-badge ${
+                      order.status === 'completed' ? 'status-success' : 
+                      order.status === 'pending' ? 'status-warning' : 
+                      order.status === 'cancelled' ? 'status-error' : 'status-info'
+                    }`}>
+                      <span className="status-dot"></span>
+                      <span className="status-text">{order.status}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="activity-main-content">
+                    <h3 className="activity-title">Order #{(order._id || '').slice(-6)}</h3>
+                    <div className="activity-value-container">
+                      <span className="activity-value">{formatCurrency(order.total)}</span>
+                      <span className="activity-currency">USD</span>
+                    </div>
+                    
+                    <div className="activity-details-grid">
+                      <div className="activity-detail-item">
+                        <div className="detail-icon-wrapper customer-icon">
+                          <FaUsers className="detail-icon" />
+                        </div>
+                        <div className="detail-content">
+                          <span className="detail-label">Customer</span>
+                          <span className="detail-value">{order.customerName || 'Walk-in'}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="activity-detail-item">
+                        <div className="detail-icon-wrapper time-icon">
+                          <FaClock className="detail-icon" />
+                        </div>
+                        <div className="detail-content">
+                          <span className="detail-label">Time</span>
+                          <span className="detail-value">
+                            {order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Just now'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="activity-detail-item">
+                        <div className="detail-icon-wrapper items-icon">
+                          <FaBox className="detail-icon" />
+                        </div>
+                        <div className="detail-content">
+                          <span className="detail-label">Items</span>
+                          <span className="detail-value">{order.items?.length || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="activity-progress-indicator">
+                      <div className="progress-bar purple-progress" style={{ width: '85%' }}></div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="activity-visual-accent purple-accent"></div>
+              </div>
+            ))
+          ) : (
+            <div className="activity-modern-card empty-state-card animate-activity-modern" style={{ animationDelay: '100ms' }}>
+              <div className="activity-card-background">
+                <div className="background-pattern empty-pattern"></div>
+              </div>
+              
+              <div className="activity-card-content">
+                <div className="empty-state-content">
+                  <div className="empty-state-icon-wrapper gradient-gray">
+                    <FaShoppingCart className="empty-state-icon" />
+                  </div>
+                  <div className="empty-state-main">
+                    <h3 className="empty-state-title">No Recent Activity</h3>
+                    <p className="empty-state-description">Orders will appear here once you start making sales</p>
+                    <div className="empty-state-action">
+                      <button className="empty-action-btn">
+                        <FaShoppingCart className="btn-icon" />
+                        <span>Create Order</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="activity-visual-accent gray-accent"></div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -666,221 +900,546 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <EnhancedHeaderWithStatsPreview />
-      
-      {/* Main Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Today's Sales</p>
-              <p className="text-2xl font-bold text-gray-900">${metrics.dailySales?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-green-600 mt-1">
-                {metrics.yesterdaySales > 0 && 
-                  `${((metrics.dailySales - metrics.yesterdaySales) / metrics.yesterdaySales * 100).toFixed(1)}% from yesterday`
-                }
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-full">
-              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Estimated Profit</p>
-              <p className="text-2xl font-bold text-gray-900">${metrics.estimatedProfit?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-green-600 mt-1">{metrics.profitMargin?.toFixed(1) || '0.0'}% margin</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-full">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{metrics.totalOrders || 0}</p>
-              <p className="text-xs text-blue-600 mt-1">{metrics.completedOrders || 0} completed</p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-full">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Discounts</p>
-              <p className="text-2xl font-bold text-gray-900">${metrics.totalDiscounts?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-orange-600 mt-1">Today's discounts</p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-full">
-              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Gross Sales</p>
-              <p className="text-xl font-bold text-gray-900">${metrics.grossSales?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-gray-500 mt-1">Before discounts</p>
-            </div>
-            <div className="p-2 bg-gray-100 rounded-full">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Net Sales</p>
-              <p className="text-xl font-bold text-gray-900">${metrics.netSales?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-gray-500 mt-1">After discounts</p>
-            </div>
-            <div className="p-2 bg-gray-100 rounded-full">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 8h6m-5 0a3 3 0 110 6H9l3 3m-3-6h6m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Average Order</p>
-              <p className="text-xl font-bold text-gray-900">${metrics.averageOrderValue?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-gray-500 mt-1">Per transaction</p>
-            </div>
-            <div className="p-2 bg-gray-100 rounded-full">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Cost</p>
-              <p className="text-xl font-bold text-gray-900">${metrics.totalCost?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-gray-500 mt-1">Cost of goods</p>
-            </div>
-            <div className="p-2 bg-gray-100 rounded-full">
-              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Inventory Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Products</p>
-              <p className="text-xl font-bold text-gray-900">{metrics.totalProducts || 0}</p>
-              <p className="text-xs text-gray-500 mt-1">In inventory</p>
-            </div>
-            <div className="p-2 bg-indigo-100 rounded-full">
-              <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Low Stock Items</p>
-              <p className="text-xl font-bold text-gray-900">{metrics.lowStockItems || 0}</p>
-              <p className="text-xs text-yellow-600 mt-1">Need restocking</p>
-            </div>
-            <div className="p-2 bg-yellow-100 rounded-full">
-              <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Out of Stock</p>
-              <p className="text-xl font-bold text-gray-900">{metrics.outOfStockItems || 0}</p>
-              <p className="text-xs text-red-600 mt-1">Urgent restock</p>
-            </div>
-            <div className="p-2 bg-red-100 rounded-full">
-              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Inventory Value</p>
-              <p className="text-xl font-bold text-gray-900">${metrics.totalInventoryValue?.toFixed(2) || '0.00'}</p>
-              <p className="text-xs text-gray-500 mt-1">Total value</p>
-            </div>
-            <div className="p-2 bg-teal-100 rounded-full">
-              <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="dashboard-main-grid">
-        <SalesPerformanceSection />
-        <StockInformationSection />
-        <ExpenseInformationSection />
-        <InventoryOverviewSection />
-        <RecentActivitySection />
-      </div>
-      
-      {/* Floating Action Elements */}
+      {/* Animated Background Elements */}
       <div className="floating-elements">
         <div className="floating-orb orb-1"></div>
         <div className="floating-orb orb-2"></div>
         <div className="floating-orb orb-3"></div>
       </div>
-      
-      {/* Background Animation Elements */}
+
       <div className="background-animation">
         <div className="wave wave-1"></div>
         <div className="wave wave-2"></div>
         <div className="wave wave-3"></div>
+      </div>
+
+      {loading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '1.1rem' }}>
+            Loading dashboard data...
+          </p>
+        </div>
+      )}
+
+      <EnhancedHeaderWithStatsPreview />
+      
+      {/* Enhanced Primary Metrics Section */}
+      <div className="dashboard-section kpi-modern-section animate-section" style={{ animationDelay: '0ms' }}>
+        <div className="section-header modern-header">
+          <div className="header-content">
+            <div className="header-icon-wrapper">
+              <FaChartLine className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="modern-section-title">Key Performance Indicators</h2>
+              <p className="modern-section-subtitle">Real-time business metrics and performance tracking</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="kpi-modern-grid">
+          <div className="kpi-modern-card gradient-blue animate-kpi-card" style={{ animationDelay: '100ms' }}>
+            <div className="kpi-card-background">
+              <div className="kpi-floating-shapes">
+                <div className="shape shape-1"></div>
+                <div className="shape shape-2"></div>
+                <div className="shape shape-3"></div>
+              </div>
+            </div>
+            <div className="kpi-card-content">
+              <div className="kpi-header">
+                <div className="kpi-icon-container blue-gradient">
+                  <FaDollarSign className="kpi-icon" />
+                </div>
+                <div className="kpi-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+12.5%</span>
+                </div>
+              </div>
+              <div className="kpi-main-content">
+                <h3 className="kpi-title">Today's Sales</h3>
+                <div className="kpi-value-container">
+                  <span className="kpi-value">{formatCurrency(metrics.dailySales || 0)}</span>
+                  <span className="kpi-currency">USD</span>
+                </div>
+                <div className="kpi-description">
+                  <span className="description-label">vs yesterday</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar blue-progress" style={{ width: '75%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-modern-card gradient-purple animate-kpi-card" style={{ animationDelay: '200ms' }}>
+            <div className="kpi-card-background">
+              <div className="kpi-floating-shapes">
+                <div className="shape shape-1"></div>
+                <div className="shape shape-2"></div>
+                <div className="shape shape-3"></div>
+              </div>
+            </div>
+            <div className="kpi-card-content">
+              <div className="kpi-header">
+                <div className="kpi-icon-container purple-gradient">
+                  <FaShoppingCart className="kpi-icon" />
+                </div>
+                <div className="kpi-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+8.3%</span>
+                </div>
+              </div>
+              <div className="kpi-main-content">
+                <h3 className="kpi-title">Total Orders</h3>
+                <div className="kpi-value-container">
+                  <span className="kpi-value">{metrics.totalOrders || 0}</span>
+                  <span className="kpi-currency">Orders</span>
+                </div>
+                <div className="kpi-description">
+                  <span className="description-label">this month</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar purple-progress" style={{ width: '68%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-modern-card gradient-green animate-kpi-card" style={{ animationDelay: '300ms' }}>
+            <div className="kpi-card-background">
+              <div className="kpi-floating-shapes">
+                <div className="shape shape-1"></div>
+                <div className="shape shape-2"></div>
+                <div className="shape shape-3"></div>
+              </div>
+            </div>
+            <div className="kpi-card-content">
+              <div className="kpi-header">
+                <div className="kpi-icon-container green-gradient">
+                  <FaChartLine className="kpi-icon" />
+                </div>
+                <div className="kpi-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+15.7%</span>
+                </div>
+              </div>
+              <div className="kpi-main-content">
+                <h3 className="kpi-title">Estimated Profit</h3>
+                <div className="kpi-value-container">
+                  <span className="kpi-value">{formatCurrency(metrics.estimatedProfit || 0)}</span>
+                  <span className="kpi-currency">USD</span>
+                </div>
+                <div className="kpi-description">
+                  <span className="description-label">profit margin</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar green-progress" style={{ width: '82%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="kpi-modern-card gradient-orange animate-kpi-card" style={{ animationDelay: '400ms' }}>
+            <div className="kpi-card-background">
+              <div className="kpi-floating-shapes">
+                <div className="shape shape-1"></div>
+                <div className="shape shape-2"></div>
+                <div className="shape shape-3"></div>
+              </div>
+            </div>
+            <div className="kpi-card-content">
+              <div className="kpi-header">
+                <div className="kpi-icon-container orange-gradient">
+                  <FaBox className="kpi-icon" />
+                </div>
+                <div className="kpi-trend-indicator neutral-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+2.1%</span>
+                </div>
+              </div>
+              <div className="kpi-main-content">
+                <h3 className="kpi-title">Inventory Status</h3>
+                <div className="kpi-value-container">
+                  <span className="kpi-value">{metrics.totalProducts || 0}</span>
+                  <span className="kpi-currency">Items</span>
+                </div>
+                <div className="kpi-description">
+                  <span className="description-label">in stock</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar orange-progress" style={{ width: '91%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Financial Overview Section - Modern Redesign */}
+      <div className="dashboard-section financial-modern-section animate-section" style={{ animationDelay: '200ms' }}>
+        <div className="section-header modern-header">
+          <div className="header-content">
+            <div className="header-icon-wrapper financial-header-icon">
+              <FaDollarSign className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="modern-section-title">Financial Overview</h2>
+              <p className="modern-section-subtitle">Comprehensive financial analytics and revenue insights</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="financial-modern-grid">
+          <div className="financial-modern-card gross-sales-card animate-financial-modern" style={{ animationDelay: '100ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern gross-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container emerald-gradient">
+                  <FaDollarSign className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+8.5%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Gross Sales</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.grossSales || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.grossSales || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">total revenue</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar emerald-progress" style={{ width: '85%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent emerald-accent"></div>
+          </div>
+
+          <div className="financial-modern-card net-sales-card animate-financial-modern" style={{ animationDelay: '200ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern net-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container blue-gradient">
+                  <FaChartLine className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+6.2%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Net Sales</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.netSales || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.netSales || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">after deductions</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar blue-progress" style={{ width: '78%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent blue-accent"></div>
+          </div>
+
+          <div className="financial-modern-card discounts-card animate-financial-modern" style={{ animationDelay: '300ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern discount-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container purple-gradient">
+                  <FaPercentage className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator neutral-trend">
+                  <span className="trend-value">-2.1%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Total Discounts</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.totalDiscounts || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.totalDiscounts || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">customer savings</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar purple-progress" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent purple-accent"></div>
+          </div>
+
+          <div className="financial-modern-card avg-order-card animate-financial-modern" style={{ animationDelay: '400ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern order-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container orange-gradient">
+                  <FaShoppingCart className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+4.7%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Avg Order Value</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.averageOrderValue || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.averageOrderValue || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">per transaction</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar orange-progress" style={{ width: '65%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent orange-accent"></div>
+          </div>
+
+          <div className="financial-modern-card total-cost-card animate-financial-modern" style={{ animationDelay: '500ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern cost-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container red-gradient">
+                  <FaArrowDown className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator negative-trend">
+                  <FaArrowDown className="trend-icon" />
+                  <span className="trend-value">-1.3%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Total Cost</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.totalCost || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.totalCost || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">operational expenses</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar red-progress" style={{ width: '45%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent red-accent"></div>
+          </div>
+
+          <div className="financial-modern-card inventory-value-card animate-financial-modern" style={{ animationDelay: '600ms' }}>
+            <div className="financial-card-background">
+              <div className="background-pattern inventory-pattern"></div>
+            </div>
+            <div className="financial-card-content">
+              <div className="financial-header">
+                <div className="financial-icon-container teal-gradient">
+                  <FaBox className="financial-icon" />
+                </div>
+                <div className="financial-trend-indicator positive-trend">
+                  <FaArrowUp className="trend-icon" />
+                  <span className="trend-value">+12.8%</span>
+                </div>
+              </div>
+              <div className="financial-main-content">
+                <h3 className="financial-title">Inventory Value</h3>
+                <div className="financial-value-container">
+                  <span className="financial-value">${(metrics.totalInventoryValue || 0).toFixed(0)}</span>
+                  <span className="financial-currency">.{((metrics.totalInventoryValue || 0) % 1).toFixed(2).slice(2)}</span>
+                </div>
+                <div className="financial-description">
+                  <span className="description-label">stock worth</span>
+                  <div className="progress-indicator">
+                    <div className="progress-bar teal-progress" style={{ width: '92%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="financial-visual-accent teal-accent"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Inventory Alert Section */}
+      {/* Inventory Alerts Section - Modern Redesign */}
+      <div className="dashboard-section inventory-modern-section animate-section" style={{ animationDelay: '300ms' }}>
+        <div className="section-header modern-header">
+          <div className="header-content">
+            <div className="header-icon-wrapper inventory-header-icon">
+              <FaBox className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h2 className="modern-section-title">Inventory Alerts</h2>
+              <p className="modern-section-subtitle">Real-time stock monitoring and alert management</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="inventory-modern-grid">
+          <div className="inventory-modern-card low-stock-card animate-inventory-modern" style={{ animationDelay: '100ms' }}>
+            <div className="inventory-card-background">
+              <div className="background-pattern low-stock-pattern"></div>
+            </div>
+            <div className="inventory-card-content">
+              <div className="inventory-header">
+                <div className="inventory-icon-container amber-gradient">
+                  <FaBox className="inventory-icon" />
+                </div>
+                <div className={`inventory-status-badge ${(metrics.lowStockItems || 0) > 0 ? 'status-warning' : 'status-good'}`}>
+                  <span className="status-dot"></span>
+                  <span className="status-text">{(metrics.lowStockItems || 0) > 0 ? 'Warning' : 'Good'}</span>
+                </div>
+              </div>
+              <div className="inventory-main-content">
+                <h3 className="inventory-title">Low Stock Items</h3>
+                <div className="inventory-value-container">
+                  <span className="inventory-value">{metrics.lowStockItems || 0}</span>
+                  <span className="inventory-unit">Items</span>
+                </div>
+                <div className="inventory-description">
+                  <span className="description-label">need restocking</span>
+                  <div className="progress-indicator">
+                    <div className="progress-circle amber-circle">
+                      <span className="circle-value">{metrics.lowStockItems || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="inventory-visual-accent amber-accent"></div>
+          </div>
+
+          <div className="inventory-modern-card out-stock-card animate-inventory-modern" style={{ animationDelay: '200ms' }}>
+            <div className="inventory-card-background">
+              <div className="background-pattern out-stock-pattern"></div>
+            </div>
+            <div className="inventory-card-content">
+              <div className="inventory-header">
+                <div className="inventory-icon-container red-gradient">
+                  <FaArrowDown className="inventory-icon" />
+                </div>
+                <div className={`inventory-status-badge ${(metrics.outOfStockItems || 0) > 0 ? 'status-critical' : 'status-good'}`}>
+                  <span className="status-dot"></span>
+                  <span className="status-text">{(metrics.outOfStockItems || 0) > 0 ? 'Critical' : 'Good'}</span>
+                </div>
+              </div>
+              <div className="inventory-main-content">
+                <h3 className="inventory-title">Out of Stock</h3>
+                <div className="inventory-value-container">
+                  <span className="inventory-value">{metrics.outOfStockItems || 0}</span>
+                  <span className="inventory-unit">Items</span>
+                </div>
+                <div className="inventory-description">
+                  <span className="description-label">urgent restocking</span>
+                  <div className="progress-indicator">
+                    <div className="progress-circle red-circle">
+                      <span className="circle-value">{metrics.outOfStockItems || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="inventory-visual-accent red-accent"></div>
+          </div>
+
+          <div className="inventory-modern-card total-products-card animate-inventory-modern" style={{ animationDelay: '300ms' }}>
+            <div className="inventory-card-background">
+              <div className="background-pattern products-pattern"></div>
+            </div>
+            <div className="inventory-card-content">
+              <div className="inventory-header">
+                <div className="inventory-icon-container blue-gradient">
+                  <FaUsers className="inventory-icon" />
+                </div>
+                <div className="inventory-status-badge status-info">
+                  <span className="status-dot"></span>
+                  <span className="status-text">Active</span>
+                </div>
+              </div>
+              <div className="inventory-main-content">
+                <h3 className="inventory-title">Total Products</h3>
+                <div className="inventory-value-container">
+                  <span className="inventory-value">{metrics.totalProducts || 0}</span>
+                  <span className="inventory-unit">Items</span>
+                </div>
+                <div className="inventory-description">
+                  <span className="description-label">in inventory</span>
+                  <div className="progress-indicator">
+                    <div className="progress-circle blue-circle">
+                      <span className="circle-value">{metrics.totalProducts || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="inventory-visual-accent blue-accent"></div>
+          </div>
+
+          <div className="inventory-modern-card inventory-value-card animate-inventory-modern" style={{ animationDelay: '400ms' }}>
+            <div className="inventory-card-background">
+              <div className="background-pattern value-pattern"></div>
+            </div>
+            <div className="inventory-card-content">
+              <div className="inventory-header">
+                <div className="inventory-icon-container emerald-gradient">
+                  <FaDollarSign className="inventory-icon" />
+                </div>
+                <div className="inventory-status-badge status-positive">
+                  <FaArrowUp className="trend-arrow" />
+                  <span className="status-text">+12.8%</span>
+                </div>
+              </div>
+              <div className="inventory-main-content">
+                <h3 className="inventory-title">Inventory Value</h3>
+                <div className="inventory-value-container">
+                  <span className="inventory-value">${(metrics.totalInventoryValue || 0).toFixed(0)}</span>
+                  <span className="inventory-unit">K</span>
+                </div>
+                <div className="inventory-description">
+                  <span className="description-label">total worth</span>
+                  <div className="progress-indicator">
+                    <div className="progress-circle emerald-circle">
+                      <span className="circle-value">92%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="inventory-visual-accent emerald-accent"></div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Enhanced Dashboard Sections */}
+      <div className="dashboard-main-grid">
+        {/* Top Row - Sales Performance Section Only */}
+        <div className="dashboard-top-row">
+          <SalesPerformanceSection />
+        </div>
+        
+        {/* Bottom Row - Additional Sections */}
+        <div className="dashboard-bottom-row">
+          <RecentActivitySection />
+        </div>
       </div>
     </div>
   );
