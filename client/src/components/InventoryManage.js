@@ -519,9 +519,6 @@ const InventoryManage = () => {
                 />
                 Auto-refresh
               </label>
-              <span className="last-update">
-                Last updated: {lastUpdate.toLocaleTimeString()}
-              </span>
             </div>
             <button className="btn btn-primary" onClick={() => openModal('add')}>
               ➕ Add Item

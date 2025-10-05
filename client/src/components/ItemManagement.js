@@ -414,6 +414,107 @@ const ItemManagement = ({
           </div>
         </div>
 
+        {/* Items List Section */}
+        <div className="items-list-section">
+          <div className="items-list-header">
+            <h4>📦 Items List</h4>
+          </div>
+          
+          <div className="items-table-container">
+            {products.length > 0 ? (
+              <table className="items-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product) => (
+                    <tr key={product.id} className="item-row">
+                      <td className="item-name">
+                        <div className="item-info">
+                          <span className="name">{product.name}</span>
+                          {product.sku && <span className="sku">SKU: {product.sku}</span>}
+                        </div>
+                      </td>
+                      <td className="item-category">
+                        <span className="category-badge">
+                          {product.category_name || 'Uncategorized'}
+                        </span>
+                      </td>
+                      <td className="item-price">
+                        <span className="price">${parseFloat(product.price || 0).toFixed(2)}</span>
+                      </td>
+                      <td className="item-stock">
+                        <span className={`stock ${(product.stock || 0) < 10 ? 'low-stock' : ''}`}>
+                          {product.stock || 0}
+                        </span>
+                      </td>
+                      <td className="item-status">
+                        <span className={`status-badge ${product.status || 'active'}`}>
+                          {product.status || 'Active'}
+                        </span>
+                      </td>
+                      <td className="item-actions">
+                        <div className="action-buttons">
+                          <button 
+                            className="action-btn edit"
+                            onClick={() => {
+                              // Handle edit action
+                              console.log('Edit item:', product.id);
+                            }}
+                            title="Edit Item"
+                          >
+                            ✏️
+                          </button>
+                          <button 
+                            className="action-btn stock"
+                            onClick={() => {
+                              setSelectedItem(product.id.toString());
+                              setActiveSection('add-stock');
+                            }}
+                            title="Update Stock"
+                          >
+                            📦
+                          </button>
+                          <button 
+                            className="action-btn delete"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+                                // Handle delete action
+                                console.log('Delete item:', product.id);
+                              }
+                            }}
+                            title="Delete Item"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">📦</div>
+                <h3>No Items Found</h3>
+                <p>Start by adding your first item to the inventory.</p>
+                <button 
+                  className="add-first-item-btn"
+                  onClick={() => setActiveSection('add')}
+                >
+                  ➕ Add First Item
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
     );
@@ -589,12 +690,12 @@ const ItemManagement = ({
   );
 
   // Enhanced import function for items
-  const handleItemFileImport = (event) => {
+  const handleItemFileImport = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const csv = e.target.result;
         const lines = csv.split('\n').filter(line => line.trim());
@@ -619,62 +720,128 @@ const ItemManagement = ({
         const categoryIndex = getColumnIndex(['category', 'type']);
         const priceIndex = getColumnIndex(['price', 'cost', 'amount']);
         const stockIndex = getColumnIndex(['stock', 'quantity', 'qty']);
+        const skuIndex = getColumnIndex(['sku', 'code', 'barcode']);
+        const descriptionIndex = getColumnIndex(['description', 'desc', 'details']);
 
         if (nameIndex === -1) {
           alert('CSV must contain a "Name" column');
           return;
         }
 
-        const newItems = [];
+        const itemsToImport = [];
         let successCount = 0;
         let errorCount = 0;
+        const importResults = [];
 
+        // Parse CSV data first
         for (let i = 1; i < lines.length; i++) {
           const values = lines[i].split(',').map(v => v.trim());
           
-          if (values.length < headers.length) continue;
+          if (values.length < headers.length) {
+            errorCount++;
+            importResults.push({ row: i + 1, error: 'Insufficient columns' });
+            continue;
+          }
 
           const name = values[nameIndex];
           if (!name) {
             errorCount++;
+            importResults.push({ row: i + 1, error: 'Missing name' });
             continue;
           }
 
           const category = categoryIndex !== -1 ? values[categoryIndex] : 'General';
           const price = priceIndex !== -1 ? parseFloat(values[priceIndex]) || 0 : 0;
           const stock = stockIndex !== -1 ? parseInt(values[stockIndex]) || 0 : 0;
+          const sku = skuIndex !== -1 ? values[skuIndex] : null;
+          const description = descriptionIndex !== -1 ? values[descriptionIndex] : null;
 
-          const newItem = {
-            id: Date.now() + Math.random(),
+          itemsToImport.push({
             name,
             category,
             price,
             stock,
+            sku,
+            description,
             status: 'active',
-            createdAt: new Date().toISOString()
-          };
-
-          newItems.push(newItem);
-          successCount++;
-        }
-
-        if (newItems.length > 0) {
-          setProducts(prevProducts => [...prevProducts, ...newItems]);
-          
-          // Add new categories if they don't exist
-          const newCategories = [...new Set(newItems.map(item => item.category))];
-          newCategories.forEach(cat => {
-            if (!categories.find(c => c.name === cat)) {
-              setCategories(prev => [...prev, { id: Date.now() + Math.random(), name: cat }]);
-            }
+            rowNumber: i + 1
           });
         }
 
-        alert(`Import completed!\nSuccessful: ${successCount} items\nErrors: ${errorCount} items`);
+        // Now make API calls to create each item
+        setIsLoading(true);
+        
+        for (const item of itemsToImport) {
+          try {
+            const response = await fetch('/api/products', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(item),
+            });
+
+            if (response.ok) {
+              const createdProduct = await response.json();
+              successCount++;
+              importResults.push({ 
+                row: item.rowNumber, 
+                success: true, 
+                product: createdProduct 
+              });
+            } else {
+              const errorData = await response.json();
+              errorCount++;
+              importResults.push({ 
+                row: item.rowNumber, 
+                error: errorData.error || 'Failed to create product' 
+              });
+            }
+          } catch (error) {
+            console.error(`Error importing item ${item.name}:`, error);
+            errorCount++;
+            importResults.push({ 
+              row: item.rowNumber, 
+              error: 'Network error - Failed to fetch' 
+            });
+          }
+        }
+
+        setIsLoading(false);
+
+        // Refresh products list after import
+        try {
+          const response = await fetch('/api/products');
+          if (response.ok) {
+            const updatedProducts = await response.json();
+            setProducts(updatedProducts);
+          }
+        } catch (error) {
+          console.error('Error refreshing products:', error);
+        }
+
+        // Show detailed import results
+        const successItems = importResults.filter(r => r.success);
+        const errorItems = importResults.filter(r => r.error);
+        
+        let resultMessage = `Import completed!\nTotal Items: ${itemsToImport.length}\nSuccessfully Imported: ${successCount}\nErrors: ${errorCount}`;
+        
+        if (errorItems.length > 0) {
+          resultMessage += '\n\nError Details:\n';
+          errorItems.slice(0, 5).forEach(item => {
+            resultMessage += `Row ${item.row}: ${item.error}\n`;
+          });
+          if (errorItems.length > 5) {
+            resultMessage += `... and ${errorItems.length - 5} more errors`;
+          }
+        }
+
+        alert(resultMessage);
         event.target.value = '';
         
       } catch (error) {
         console.error('Import error:', error);
+        setIsLoading(false);
         alert('Error processing file. Please check the format and try again.');
       }
     };
@@ -954,6 +1121,12 @@ const ItemManagement = ({
           >
             📤 Import/Export
           </button>
+          <button 
+            className={`nav-btn ${activeSection === 'add-stock' ? 'active' : ''}`}
+            onClick={() => setActiveSection('add-stock')}
+          >
+            📦 Add Stock
+          </button>
         </div>
       </div>
       
@@ -962,6 +1135,7 @@ const ItemManagement = ({
         {activeSection === 'add' && renderAddItem()}
         {activeSection === 'add-category' && renderAddCategory()}
         {activeSection === 'import-export' && renderImportExport()}
+        {activeSection === 'add-stock' && renderAddStock()}
       </div>
     </div>
   );

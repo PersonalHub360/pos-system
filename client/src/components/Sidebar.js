@@ -6,7 +6,6 @@ const Sidebar = ({ onNavigate, currentView = 'pos', isVisible = true, onToggle }
   
   const menuItems = [
       { icon: '📊', label: 'Dashboard', active: currentView === 'dashboard', color: '#3B82F6', gradient: 'linear-gradient(135deg, #3B82F6, #1D4ED8)' },
-      { icon: '🏪', label: 'Pos', active: currentView === 'pos', color: '#10B981', gradient: 'linear-gradient(135deg, #10B981, #047857)' },
       { 
         icon: '💰', 
         label: 'Sales Manage', 

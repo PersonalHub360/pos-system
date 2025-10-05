@@ -89,8 +89,47 @@ const SalesManagement = () => {
   ];
 
   useEffect(() => {
-    setSales(sampleSales);
+    // Fetch real sales data from API
+    fetchSalesData();
   }, []);
+
+  const fetchSalesData = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/orders');
+      if (response.ok) {
+        const orders = await response.json();
+        // Transform orders to match the sales format
+        const transformedSales = orders.map(order => ({
+          id: order.id,
+          date: new Date(order.created_at).toLocaleDateString(),
+          time: new Date(order.created_at).toLocaleTimeString(),
+          customer: order.customer_name || 'Walk-in Customer',
+          biller: 'POS User',
+          items: order.items || [],
+          subtotal: parseFloat(order.subtotal) || 0,
+          tax: parseFloat(order.tax) || 0,
+          total: parseFloat(order.total) || 0,
+          grandTotal: parseFloat(order.total) || 0,
+          returnedAmount: 0.00,
+          paidAmount: parseFloat(order.total) || 0,
+          dueAmount: 0.00,
+          paymentMethod: order.payment_method || 'Cash',
+          status: order.status || 'Completed',
+          saleStatus: 'Final',
+          paymentStatus: 'Paid'
+        }));
+        setSales(transformedSales);
+      } else {
+        console.error('Failed to fetch sales data');
+        // Fallback to sample data if API fails
+        setSales(sampleSales);
+      }
+    } catch (error) {
+      console.error('Error fetching sales data:', error);
+      // Fallback to sample data if API fails
+      setSales(sampleSales);
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -122,6 +161,18 @@ const SalesManagement = () => {
   const handleEditSale = (sale) => {
     setModalType('edit');
     setSelectedSale(sale);
+    // Pre-populate form data with selected sale information
+    setFormData({
+      customer: sale.customer,
+      paymentMethod: sale.paymentMethod,
+      items: sale.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      })),
+      discount: 0,
+      taxRate: 10
+    });
     setShowModal(true);
   };
 
@@ -138,9 +189,90 @@ const SalesManagement = () => {
   };
 
   const handlePrintReceipt = (sale) => {
-    // Print receipt functionality
-    console.log('Printing receipt for sale:', sale.id);
-    alert(`Printing receipt for Sale #${sale.id}`);
+    // Create a printable receipt window
+    const printWindow = window.open('', '_blank');
+    const receiptHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - Sale #${sale.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .receipt-header { text-align: center; margin-bottom: 20px; }
+          .receipt-header h1 { margin: 0; }
+          .receipt-info { margin-bottom: 20px; }
+          .receipt-items { margin-bottom: 20px; }
+          .receipt-items table { width: 100%; border-collapse: collapse; }
+          .receipt-items th, .receipt-items td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+          .receipt-totals { margin-top: 20px; text-align: right; }
+          .receipt-totals .total-row { margin: 5px 0; }
+          .receipt-totals .final-total { font-weight: bold; font-size: 1.2em; }
+          @media print {
+            body { margin: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="receipt-header">
+          <h1>POS Restaurant</h1>
+          <p>123 Main Street, City, State 12345</p>
+          <p>Phone: (555) 123-4567</p>
+        </div>
+        
+        <div class="receipt-info">
+          <p><strong>Sale ID:</strong> #${sale.id}</p>
+          <p><strong>Date:</strong> ${sale.date}</p>
+          <p><strong>Time:</strong> ${sale.time}</p>
+          <p><strong>Customer:</strong> ${sale.customer}</p>
+          <p><strong>Biller:</strong> ${sale.biller}</p>
+          <p><strong>Payment Method:</strong> ${sale.paymentMethod}</p>
+        </div>
+        
+        <div class="receipt-items">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${sale.items.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td>${item.quantity}</td>
+                  <td>$${item.price.toFixed(2)}</td>
+                  <td>$${(item.price * item.quantity).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="receipt-totals">
+          <div class="total-row">Subtotal: $${sale.subtotal.toFixed(2)}</div>
+          <div class="total-row">Tax: $${sale.tax.toFixed(2)}</div>
+          <div class="total-row final-total">Total: $${sale.total.toFixed(2)}</div>
+          <div class="total-row">Paid: $${sale.paidAmount.toFixed(2)}</div>
+          ${sale.dueAmount > 0 ? `<div class="total-row">Due: $${sale.dueAmount.toFixed(2)}</div>` : ''}
+        </div>
+        
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+              window.close();
+            };
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    
+    printWindow.document.write(receiptHTML);
+    printWindow.document.close();
   };
 
   const handleGenerateInvoice = (sale) => {
@@ -163,8 +295,23 @@ const SalesManagement = () => {
     setDropdownOpen(null);
   };
 
-  const confirmDelete = () => {
-    setSales(sales.filter(sale => sale.id !== selectedSale.id));
+  const confirmDelete = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/orders/${selectedSale.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        alert('Sale deleted successfully!');
+        fetchSalesData(); // Refresh the sales list
+      } else {
+        throw new Error('Failed to delete sale');
+      }
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      alert('Error deleting sale. Please try again.');
+    }
+    
     setShowModal(false);
     setSelectedSale(null);
   };
@@ -220,7 +367,7 @@ const SalesManagement = () => {
     };
   };
 
-  const handleSubmitSale = () => {
+  const handleSubmitSale = async () => {
     // Form validation
     const validItems = formData.items.filter(item => item.name.trim() && item.quantity > 0 && item.price > 0);
     
@@ -240,29 +387,55 @@ const SalesManagement = () => {
     }
 
     const totals = calculateTotals();
-    const newSale = {
-      id: sales.length + 1,
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
-      customer: formData.customer.trim() || 'Walk-in Customer',
+    const saleData = {
+      customer_name: formData.customer.trim() || 'Walk-in Customer',
       items: validItems,
       subtotal: parseFloat(totals.subtotal),
       discount: formData.discount,
-      discountAmount: parseFloat(totals.discountAmount),
       tax: parseFloat(totals.tax),
       total: parseFloat(totals.total),
-      paymentMethod: formData.paymentMethod,
-      status: 'Completed'
+      payment_method: formData.paymentMethod,
+      status: 'completed'
     };
 
-    if (modalType === 'add') {
-      setSales(prev => [...prev, newSale]);
-      alert('Sale added successfully!');
-    } else if (modalType === 'edit') {
-      setSales(prev => prev.map(sale => 
-        sale.id === selectedSale.id ? { ...newSale, id: selectedSale.id } : sale
-      ));
-      alert('Sale updated successfully!');
+    try {
+      if (modalType === 'add') {
+        // Create new sale via API
+        const response = await fetch('http://localhost:5000/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(saleData),
+        });
+
+        if (response.ok) {
+          alert('Sale added successfully!');
+          fetchSalesData(); // Refresh the sales list
+        } else {
+          throw new Error('Failed to create sale');
+        }
+      } else if (modalType === 'edit') {
+        // Update existing sale via API
+        const response = await fetch(`http://localhost:5000/api/orders/${selectedSale.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(saleData),
+        });
+
+        if (response.ok) {
+          alert('Sale updated successfully!');
+          fetchSalesData(); // Refresh the sales list
+        } else {
+          throw new Error('Failed to update sale');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving sale:', error);
+      alert('Error saving sale. Please try again.');
+      return;
     }
 
     setShowModal(false);

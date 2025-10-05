@@ -307,18 +307,22 @@ class SalesController extends BaseController {
       const { id } = req.params;
       const { status } = req.body;
 
+      if (!status) {
+        return res.status(400).json({ error: 'Status is required' });
+      }
+
       const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: 'Invalid status' });
       }
 
-      const updateQuery = `
+      const query = `
         UPDATE orders 
-        SET order_status = ?, updated_at = CURRENT_TIMESTAMP
+        SET order_status = ?, updated_at = CURRENT_TIMESTAMP 
         WHERE id = ?
       `;
 
-      const result = await this.executeUpdate(updateQuery, [status, id]);
+      const result = await this.executeQuery(query, [status, id]);
 
       if (result.changes === 0) {
         return res.status(404).json({ error: 'Sale not found' });
@@ -332,6 +336,54 @@ class SalesController extends BaseController {
     } catch (error) {
       console.error('Error updating sale status:', error);
       res.status(500).json({ error: 'Failed to update sale status' });
+    }
+  }
+
+  /**
+   * Delete a sale
+   */
+  async deleteSale(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Check if sale exists
+      const sale = await this.getSaleDetails(id);
+      if (!sale) {
+        return res.status(404).json({ error: 'Sale not found' });
+      }
+
+      // Begin transaction
+      await this.beginTransaction();
+
+      try {
+        // Delete order items first (foreign key constraint)
+        await this.executeQuery('DELETE FROM order_items WHERE order_id = ?', [id]);
+
+        // Delete payments
+        await this.executeQuery('DELETE FROM payments WHERE order_id = ?', [id]);
+
+        // Delete the order
+        const result = await this.executeQuery('DELETE FROM orders WHERE id = ?', [id]);
+
+        if (result.changes === 0) {
+          throw new Error('Failed to delete sale');
+        }
+
+        await this.commitTransaction();
+
+        res.json({
+          success: true,
+          message: 'Sale deleted successfully'
+        });
+
+      } catch (error) {
+        await this.rollbackTransaction();
+        throw error;
+      }
+
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      res.status(500).json({ error: 'Failed to delete sale' });
     }
   }
 

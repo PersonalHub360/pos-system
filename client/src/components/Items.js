@@ -935,28 +935,70 @@ const Items = ({
   const renderItemCard = (item) => (
     <div key={item.id} className="item-card">
       <div className="item-image">
-        {item.image ? (
-          <img src={item.image} alt={item.name} />
-        ) : (
-          <div className="placeholder-image">📦</div>
-        )}
+        {(item.image_url || item.image) ? (
+          <img 
+            src={item.image_url || item.image} 
+            alt={item.name} 
+            onError={(e) => {
+              console.log('Image failed to load:', item.image_url || item.image);
+              e.target.style.display = 'none';
+              e.target.nextSibling.style.display = 'flex';
+            }} 
+            onLoad={(e) => {
+              console.log('Image loaded successfully:', item.image_url || item.image);
+              e.target.nextSibling.style.display = 'none';
+            }}
+          />
+        ) : null}
+        <div className="placeholder-image" style={{ display: (item.image_url || item.image) ? 'none' : 'flex' }}>
+          <div className="placeholder-icon">📦</div>
+          <div className="placeholder-text">No Image</div>
+        </div>
         <div className="item-actions">
-          <button className="action-btn edit" onClick={() => openEditModal(item)}>
-            ✏️
+          <button className="action-btn edit" onClick={() => openEditModal(item)} title="Edit Item">
+            <span className="action-icon">✏️</span>
           </button>
-          <button className="action-btn delete" onClick={() => handleDeleteItem(item.id)}>
-            🗑️
+          <button className="action-btn delete" onClick={() => handleDeleteItem(item.id)} title="Delete Item">
+            <span className="action-icon">🗑️</span>
           </button>
+        </div>
+        <div className="item-badge">
+          <span className={`status-badge ${item.status}`}>
+            {item.status}
+          </span>
         </div>
       </div>
       <div className="item-info">
-        <h3 className="item-name">{item.name}</h3>
-        <p className="item-category">{item.category}</p>
-        {item.sku && <p className="item-sku">SKU: {item.sku}</p>}
-        <div className="item-price">{formatCurrency(item.price)}</div>
-        <div className={`stock-status ${getStockStatus(item.stock).status}`}>
-          <span className="stock-indicator"></span>
-          {getStockStatus(item.stock).text} ({item.stock})
+        <div className="item-header">
+          <h3 className="item-name">{item.name}</h3>
+          <div className="item-price">{formatCurrency(item.price)}</div>
+        </div>
+        <div className="item-details">
+          <div className="item-category">
+            <span className="category-icon">🏷️</span>
+            {item.category}
+          </div>
+          {item.sku && (
+            <div className="item-sku">
+              <span className="sku-icon">🔖</span>
+              SKU: {item.sku}
+            </div>
+          )}
+        </div>
+        <div className="item-footer">
+          <div className={`stock-status ${getStockStatus(item.stock).status}`}>
+            <span className="stock-indicator"></span>
+            <span className="stock-text">{getStockStatus(item.stock).text}</span>
+            <span className="stock-count">({item.stock})</span>
+          </div>
+          <div className="item-actions-footer">
+            <button className="quick-action-btn stock" title="Update Stock">
+              📊
+            </button>
+            <button className="quick-action-btn view" title="View Details">
+              👁️
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1268,8 +1310,38 @@ const Items = ({
                 </div>
                 <div className="search-results">
                   {filteredAndSortedItems.length > 0 ? (
-                    <div className="items-grid">
-                      {filteredAndSortedItems.map(renderItemCard)}
+                    <div className="search-grid-container">
+                      <div className="search-grid-scroll-controls">
+                        <button 
+                          className="grid-scroll-btn scroll-up"
+                          onClick={() => {
+                            const container = document.querySelector('.search-items-grid-scrollable');
+                            if (container) {
+                              container.scrollBy({ top: -600, behavior: 'smooth' });
+                            }
+                          }}
+                          title="Scroll Up"
+                        >
+                          ↑
+                        </button>
+                        <button 
+                          className="grid-scroll-btn scroll-down"
+                          onClick={() => {
+                            const container = document.querySelector('.search-items-grid-scrollable');
+                            if (container) {
+                              container.scrollBy({ top: 600, behavior: 'smooth' });
+                            }
+                          }}
+                          title="Scroll Down"
+                        >
+                          ↓
+                        </button>
+                      </div>
+                      <div className="search-items-grid-scrollable">
+                        <div className="items-grid">
+                          {filteredAndSortedItems.map(renderItemCard)}
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="no-results">
@@ -1281,8 +1353,38 @@ const Items = ({
                 </div>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className="items-grid">
-                {filteredAndSortedItems.map(renderItemCard)}
+              <div className="grid-container">
+                <div className="grid-scroll-controls">
+                  <button 
+                    className="grid-scroll-btn scroll-up"
+                    onClick={() => {
+                      const container = document.querySelector('.items-grid-scrollable');
+                      if (container) {
+                        container.scrollBy({ top: -600, behavior: 'smooth' });
+                      }
+                    }}
+                    title="Scroll Up"
+                  >
+                    ↑
+                  </button>
+                  <button 
+                    className="grid-scroll-btn scroll-down"
+                    onClick={() => {
+                      const container = document.querySelector('.items-grid-scrollable');
+                      if (container) {
+                        container.scrollBy({ top: 600, behavior: 'smooth' });
+                      }
+                    }}
+                    title="Scroll Down"
+                  >
+                    ↓
+                  </button>
+                </div>
+                <div className="items-grid-scrollable">
+                  <div className="items-grid">
+                    {filteredAndSortedItems.map(renderItemCard)}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="items-table-container">

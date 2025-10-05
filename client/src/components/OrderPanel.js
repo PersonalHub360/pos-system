@@ -128,6 +128,11 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       return;
     }
 
+    if (cart.length === 0) {
+      alert('Please add items to cart before placing order');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       // Convert cart to items format expected by server
@@ -139,12 +144,15 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       }));
 
       const orderData = {
+        tableId: selectedTable,
+        customerName: `Table ${selectedTable}`,
+        orderType: 'dine_in',
         items,
-        table: selectedTable,
-        subtotal,
-        discount: discountAmount,
-        total,
-        timestamp: new Date().toISOString()
+        discountAmount,
+        discountType: 'percentage',
+        serviceCharge: 0,
+        notes: '',
+        paymentMethod: 'cash'
       };
 
       // Send order to server
@@ -168,10 +176,24 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       }
 
       const result = await response.json();
+      console.log('Order placed successfully:', result);
       
       if (shouldPrint) {
         try {
-          await printService.printBill(orderData, invoiceSettings?.multiCurrency);
+          const printData = {
+            items: cart.map(item => ({
+              product_id: item.id,
+              quantity: item.quantity,
+              price: item.price,
+              name: item.name
+            })),
+            subtotal,
+            discount: discountAmount,
+            total,
+            table: selectedTable,
+            timestamp: new Date().toISOString()
+          };
+          await printService.printBill(printData, invoiceSettings?.multiCurrency);
           alert('Order placed and bill printed successfully!');
         } catch (printError) {
           console.error('Print error:', printError);
@@ -184,10 +206,11 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       // Clear the cart and selections
       onClearCart();
       setSelectedTable('');
+      setDiscountPercentage(0);
       
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('Failed to place order. Please try again.');
+      alert(`Failed to place order: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -268,63 +291,126 @@ const OrderPanel = ({ cart, onUpdateItem, onRemoveItem, onClearCart, draftState,
       </div>
 
       <div className="order-summary">
-        <div className="summary-row">
-          <span>Sub total :</span>
-          <span>{subtotal.toFixed(0)}$</span>
-        </div>
-        <div className="summary-row">
-          <span>Discount :</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span 
-              style={{ cursor: 'pointer', color: '#852FEE' }}
-              onClick={handleDiscountEdit}
-            >
-              ✏️ {discountPercentage}% ({discountAmount.toFixed(1)}$)
-            </span>
+        <div className="summary-header">
+          <h3>📋 Order Summary</h3>
+          <div className="summary-badge">
+            {cart.length} {cart.length === 1 ? 'item' : 'items'}
           </div>
         </div>
-        <div className="summary-row total">
-          <span>Total :</span>
-          <span data-amount={total.toFixed(2)}>{total.toFixed(0)}$</span>
+        <div className="summary-content">
+          <div className="summary-calculations">
+            <div className="summary-row subtotal-row">
+              <span className="summary-label">
+                <span className="label-icon">💰</span>
+                Subtotal
+              </span>
+              <span className="summary-value">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="summary-row discount-row">
+              <span className="summary-label">
+                <span className="label-icon">🏷️</span>
+                Discount
+              </span>
+              <div className="discount-section">
+                <span 
+                  className="discount-edit-btn"
+                  onClick={handleDiscountEdit}
+                  title="Click to edit discount"
+                >
+                  {discountPercentage > 0 ? (
+                    <>
+                      <span className="discount-percentage">{discountPercentage}%</span>
+                      <span className="discount-amount">-${discountAmount.toFixed(2)}</span>
+                    </>
+                  ) : (
+                    <span className="no-discount">No discount</span>
+                  )}
+                  <span className="edit-icon">✏️</span>
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="summary-total">
+            <div className="summary-row total-row">
+              <span className="summary-label">
+                <span className="label-icon">🧾</span>
+                Total Amount
+              </span>
+              <span className="summary-value total-amount">${total.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>
 
       <div className="order-actions">
-        <div className="action-buttons-row">
-          <button 
-            className="action-btn draft-btn"
-            onClick={handleDraft}
-            disabled={cart.length === 0}
-          >
-            📄 DRAFT
-          </button>
-          <button 
-            className="action-btn bill-print-btn"
-            onClick={() => handlePlaceOrder(true)}
-            disabled={isProcessing || cart.length === 0}
-          >
-            {isProcessing ? 'Processing...' : 'BILL & PRINT'}
-          </button>
+        <div className="actions-header">
+          <h4>⚡ Quick Actions</h4>
+          <div className="actions-status">
+            {isProcessing && <span className="processing-indicator">Processing...</span>}
+          </div>
         </div>
-        
-        <div className="action-buttons-row">
-          <button 
-            className="action-btn place-order-btn full-width"
-            onClick={() => handlePlaceOrder(false)}
-            disabled={isProcessing || cart.length === 0}
-          >
-            {isProcessing ? 'Processing...' : 'PLACE ORDER'}
-          </button>
-        </div>
-        
-        <div className="action-buttons-row">
-          <button 
-            className="action-btn print-receipt-btn full-width"
-            onClick={handlePOSAndPrint}
-            disabled={isProcessing || cart.length === 0}
-          >
-            {isProcessing ? 'Processing...' : '🖨️ PRINT RECEIPT'}
-          </button>
+        <div className="actions-container">
+          <div className="secondary-actions">
+            <button 
+              className="action-btn draft-btn"
+              onClick={handleDraft}
+              disabled={cart.length === 0}
+              title="Save current order as draft"
+            >
+              <div className="btn-content">
+                <span className="btn-icon">📄</span>
+                <div className="btn-text-group">
+                  <span className="btn-text">Save Draft</span>
+                  <span className="btn-subtitle">Save for later</span>
+                </div>
+              </div>
+            </button>
+            <button 
+              className="action-btn print-receipt-btn"
+              onClick={handlePOSAndPrint}
+              disabled={isProcessing || cart.length === 0}
+              title="Print receipt without placing order"
+            >
+              <div className="btn-content">
+                <span className="btn-icon">🖨️</span>
+                <div className="btn-text-group">
+                  <span className="btn-text">{isProcessing ? 'Printing...' : 'Print Receipt'}</span>
+                  <span className="btn-subtitle">Receipt only</span>
+                </div>
+              </div>
+            </button>
+          </div>
+          
+          <div className="primary-actions">
+            <button 
+              className="action-btn place-order-btn"
+              onClick={() => handlePlaceOrder(false)}
+              disabled={isProcessing || cart.length === 0 || !selectedTable}
+              title="Place order without printing"
+            >
+              <div className="btn-content">
+                <span className="btn-icon">🛒</span>
+                <div className="btn-text-group">
+                  <span className="btn-text">{isProcessing ? 'Processing...' : 'Place Order'}</span>
+                  <span className="btn-subtitle">Send to kitchen</span>
+                </div>
+              </div>
+            </button>
+            <button 
+              className="action-btn bill-print-btn primary-btn"
+              onClick={() => handlePlaceOrder(true)}
+              disabled={isProcessing || cart.length === 0 || !selectedTable}
+              title="Place order and print bill"
+            >
+              <div className="btn-content">
+                <span className="btn-icon">🧾</span>
+                <div className="btn-text-group">
+                  <span className="btn-text">{isProcessing ? 'Processing...' : 'Order & Print'}</span>
+                  <span className="btn-subtitle">Complete order</span>
+                </div>
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>

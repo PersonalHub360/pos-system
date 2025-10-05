@@ -174,4 +174,6 @@ class SalesService {
   }
 }
 
-export default new SalesService();
+// Create and export singleton instance
+const salesService = new SalesService();
+export default salesService;

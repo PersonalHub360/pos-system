@@ -550,27 +550,162 @@ app.get('/api/orders', (req, res) => {
   });
 });
 
-// Update order status
+// Update order (full edit or status only)
 app.put('/api/orders/:id', (req, res) => {
   const { id } = req.params;
-  const { status, payment_method } = req.body;
+  const { status, customer, paymentMethod, items, subtotal, tax, discount, total } = req.body;
 
-  // Update order with status and payment method
-  const updateQuery = payment_method 
-    ? 'UPDATE orders SET status = ?, payment_method = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    : 'UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-  
-  const updateParams = payment_method ? [status, payment_method, id] : [status, id];
+  console.log('=== ORDER UPDATE REQUEST ===');
+  console.log('Order ID:', id);
+  console.log('Request body:', req.body);
 
-  db.run(updateQuery, updateParams, function(err) {
-    if (err) {
-      res.status(500).json({ error: err.message });
-      return;
-    }
+  // Check if this is a full order edit or just status update
+  const isFullEdit = customer !== undefined || paymentMethod !== undefined || items !== undefined;
+
+  if (isFullEdit) {
+    // Handle full order edit
+    console.log('Processing full order edit...');
+    
+    // Start transaction for full order update
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+      
+      try {
+        // Update order main details
+        let updateFields = [];
+        let updateParams = [];
+        
+        if (customer !== undefined) {
+          updateFields.push('customer_name = ?');
+          updateParams.push(customer);
+        }
+        if (subtotal !== undefined) {
+          updateFields.push('subtotal = ?');
+          updateParams.push(subtotal);
+        }
+        if (tax !== undefined) {
+          updateFields.push('tax_amount = ?');
+          updateParams.push(tax);
+        }
+        if (discount !== undefined) {
+          updateFields.push('discount = ?');
+          updateParams.push(discount);
+        }
+        if (total !== undefined) {
+          updateFields.push('total = ?');
+          updateParams.push(total);
+        }
+        
+        updateParams.push(id);
+        
+        if (updateFields.length > 0) {
+          const updateQuery = `UPDATE orders SET ${updateFields.join(', ')} WHERE id = ?`;
+          console.log('Executing order update query:', updateQuery);
+          console.log('With parameters:', updateParams);
+          
+          db.run(updateQuery, updateParams, function(err) {
+            if (err) {
+              console.error('Error updating order:', err);
+              db.run('ROLLBACK');
+              res.status(500).json({ error: err.message });
+              return;
+            }
+            
+            if (this.changes === 0) {
+              console.error('Order not found for ID:', id);
+              db.run('ROLLBACK');
+              res.status(404).json({ error: 'Order not found' });
+              return;
+            }
+            
+            // If items are provided, update order items
+            if (items && Array.isArray(items)) {
+              // Delete existing order items
+              db.run('DELETE FROM order_items WHERE order_id = ?', [id], function(err) {
+                if (err) {
+                  console.error('Error deleting old order items:', err);
+                  db.run('ROLLBACK');
+                  res.status(500).json({ error: err.message });
+                  return;
+                }
+                
+                // Insert new order items
+                let itemsProcessed = 0;
+                const totalItems = items.length;
+                
+                if (totalItems === 0) {
+                  db.run('COMMIT');
+                  res.json({ message: 'Order updated successfully' });
+                  return;
+                }
+                
+                items.forEach((item, index) => {
+                  const insertQuery = 'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)';
+                  const insertParams = [id, item.product_id || item.id, item.quantity, item.price];
+                  
+                  db.run(insertQuery, insertParams, function(err) {
+                    if (err) {
+                      console.error('Error inserting order item:', err);
+                      db.run('ROLLBACK');
+                      res.status(500).json({ error: err.message });
+                      return;
+                    }
+                    
+                    itemsProcessed++;
+                    if (itemsProcessed === totalItems) {
+                      db.run('COMMIT');
+                      console.log('Order updated successfully with', totalItems, 'items');
+                      res.json({ message: 'Order updated successfully' });
+                    }
+                  });
+                });
+              });
+            } else {
+              db.run('COMMIT');
+              res.json({ message: 'Order updated successfully' });
+            }
+          });
+        } else {
+          db.run('ROLLBACK');
+          res.status(400).json({ error: 'No valid fields to update' });
+        }
+      } catch (error) {
+        console.error('Transaction error:', error);
+        db.run('ROLLBACK');
+        res.status(500).json({ error: error.message });
+      }
+    });
+  } else {
+    // Handle status-only update (existing functionality)
+    console.log('Processing status update only...');
+    const updateQuery = 'UPDATE orders SET status = ? WHERE id = ?';
+    const updateParams = [status, id];
+
+    console.log('Executing query:', updateQuery);
+    console.log('With parameters:', updateParams);
+
+    db.run(updateQuery, updateParams, function(err) {
+      if (err) {
+        console.error('=== DATABASE ERROR ===');
+        console.error('Database error updating order:', err);
+        console.error('Error message:', err.message);
+        console.error('Error code:', err.code);
+        console.error('Update query:', updateQuery);
+        console.error('Update params:', updateParams);
+        res.status(500).json({ error: err.message });
+        return;
+      }
+    
+    console.log('Database update successful. Changes:', this.changes);
+    
     if (this.changes === 0) {
+      console.error('=== ORDER NOT FOUND ===');
+      console.error('Order not found for ID:', id);
       res.status(404).json({ error: 'Order not found' });
       return;
     }
+
+    console.log('Order updated successfully, proceeding with completion logic...');
 
     // Handle inventory updates and real-time events for completed orders
     if (status === 'completed') {
@@ -583,7 +718,11 @@ app.put('/api/orders/:id', (req, res) => {
         WHERE o.id = ?
         GROUP BY o.id
       `, [id], (err, order) => {
-        if (!err && order) {
+        if (err) {
+          console.error('Error fetching order details for completion:', err);
+          return;
+        }
+        if (order) {
           // Update inventory for each item in the order
           if (order.item_details) {
             const items = order.item_details.split(',');
@@ -627,6 +766,7 @@ app.put('/api/orders/:id', (req, res) => {
 
     res.json({ message: 'Order updated successfully' });
   });
+  }
 });
 
 // Mount API routes

@@ -163,6 +163,7 @@ function initializeRoutes(db) {
   router.get('/sales/:id', authMiddleware.verifyToken, (req, res) => salesController.getSaleById(req, res));
   router.post('/sales', authMiddleware.verifyToken, (req, res) => salesController.createSale(req, res));
   router.put('/sales/:id/status', authMiddleware.verifyToken, (req, res) => salesController.updateSaleStatus(req, res));
+  router.delete('/sales/:id', authMiddleware.verifyToken, authMiddleware.requireRole(['admin', 'manager']), (req, res) => salesController.deleteSale(req, res));
   
   // Discount plans management
   router.get('/sales/discount-plans', authMiddleware.verifyToken, (req, res) => salesController.getDiscountPlans(req, res));

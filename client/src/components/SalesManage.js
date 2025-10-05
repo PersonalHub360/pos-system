@@ -9,13 +9,14 @@ const SalesManage = () => {
   const [discountPlans, setDiscountPlans] = useState([]);
   const [products, setProducts] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [editingSaleId, setEditingSaleId] = useState(null); // Add editing state
 
   // Add Sales form state
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
     customerEmail: '',
-    items: [{ product: '', quantity: 1, price: 0 }],
+    items: [{ product: '', quantity: 1, unit: 'pieces', price: 0, supplier: '' }],
     discount: 0,
     tax: 0,
     notes: ''
@@ -53,8 +54,26 @@ const SalesManage = () => {
   const loadSalesData = async () => {
     try {
       setLoading(true);
-      const response = await salesService.getAllSales();
-      setSalesData(response.sales || []);
+      // Align with server's public orders endpoint to ensure sales list populates
+      const response = await fetch('http://localhost:5000/api/orders');
+      if (response.ok) {
+        const orders = await response.json();
+        // Transform orders into the shape expected by the Sales List UI
+        const transformed = Array.isArray(orders) ? orders.map(o => ({
+          id: o.id,
+          invoice_number: o.order_number,
+          customer_name: o.customer_name || 'Walk-in Customer',
+          created_at: o.created_at,
+          total_amount: parseFloat(o.total) || 0,
+          // Support both "status" and "order_status" usages in UI
+          status: o.status || 'pending',
+          order_status: o.status || 'pending'
+        })) : [];
+        setSalesData(transformed);
+      } else {
+        console.error('Failed to load orders for sales list:', response.status);
+        setSalesData([]);
+      }
     } catch (error) {
       console.error('Error loading sales data:', error);
       // Keep empty array as fallback
@@ -97,9 +116,34 @@ const SalesManage = () => {
     }
   };
 
-  const handleEditSale = (saleId) => {
-    // For now, just show a message
-    alert('Edit functionality will be implemented in a future update.');
+  const handleEditSale = async (saleId) => {
+    try {
+      const sale = await salesService.getSaleById(saleId);
+      
+      // Set form data with the sale information
+      setFormData({
+        customerName: sale.customer_name || '',
+        customerPhone: sale.customer_phone || '',
+        customerEmail: sale.customer_email || '',
+        paymentMethod: sale.payment_method || 'Cash',
+        items: sale.items && sale.items.length > 0 ? sale.items.map(item => ({
+          product: item.product_name || item.name || '',
+          quantity: item.quantity || 1,
+          unit: item.unit || 'pieces',
+          price: parseFloat(item.price) || 0,
+          supplier: item.supplier || ''
+        })) : [{ product: '', quantity: 1, unit: 'pieces', price: 0, supplier: '' }],
+        discount: parseFloat(sale.discount) || 0,
+        tax: parseFloat(sale.tax) || 0,
+        notes: sale.notes || ''
+      });
+      
+      setEditingSaleId(saleId);
+      setCurrentView('add-sales');
+    } catch (error) {
+      console.error('Error loading sale for edit:', error);
+      alert('Error loading sale data: ' + error.message);
+    }
   };
 
   const handlePrintSale = async (saleId) => {
@@ -160,7 +204,7 @@ const SalesManage = () => {
     const addItem = () => {
       setFormData(prev => ({
         ...prev,
-        items: [...prev.items, { product: '', quantity: 1, price: 0 }]
+        items: [...prev.items, { product: '', quantity: 1, unit: 'pieces', price: 0, supplier: '' }]
       }));
     };
 
@@ -194,40 +238,93 @@ const SalesManage = () => {
       setLoading(true);
       
       try {
+        // Validate required fields
+        if (!formData.customerName.trim()) {
+          alert('Customer name is required');
+          setLoading(false);
+          return;
+        }
+
+        // Validate items
+        const validItems = formData.items.filter(item => item.product && item.quantity > 0);
+        if (validItems.length === 0) {
+          alert('At least one item with product and quantity is required');
+          setLoading(false);
+          return;
+        }
+
+        // Check if all items have required fields
+        for (let item of validItems) {
+          if (!item.product.trim()) {
+            alert('Product name is required for all items');
+            setLoading(false);
+            return;
+          }
+          if (item.quantity <= 0) {
+            alert('Quantity must be greater than 0 for all items');
+            setLoading(false);
+            return;
+          }
+          if (item.price <= 0) {
+            alert('Unit price must be greater than 0 for all items');
+            setLoading(false);
+            return;
+          }
+        }
+        
         // Prepare sale data for API
         const saleData = {
           customer_name: formData.customerName,
           customer_phone: formData.customerPhone,
           customer_email: formData.customerEmail,
-          items: formData.items.filter(item => item.product && item.quantity > 0).map(item => ({
+          items: validItems.map(item => ({
             product_name: item.product,
             quantity: item.quantity,
-            price: item.price
+            unit: item.unit,
+            price: item.price,
+            supplier: item.supplier
           })),
           discount_percentage: formData.discount,
           tax_percentage: formData.tax,
           notes: formData.notes,
-          payment_method: 'cash', // Default payment method
+          payment_method: formData.paymentMethod || 'cash',
           status: 'completed'
         };
 
-        const response = await salesService.createSale(saleData);
-        
-        // Add the new sale to the local state
-        setSalesData(prev => [response.sale, ...prev]);
+        if (editingSaleId) {
+          // Update existing sale
+          const response = await salesService.updateSale(editingSaleId, saleData);
+          
+          // Update the sale in the local state
+          setSalesData(prev => prev.map(sale => 
+            sale.id === editingSaleId ? response.sale : sale
+          ));
+          
+          alert('Sale updated successfully!');
+          setEditingSaleId(null);
+        } else {
+          // Create new sale
+          const response = await salesService.createSale(saleData);
+          
+          // Add the new sale to the local state
+          setSalesData(prev => [response.sale, ...prev]);
+          
+          alert('Sale added successfully!');
+        }
         
         // Reset form
         setFormData({
           customerName: '',
           customerPhone: '',
           customerEmail: '',
-          items: [{ product: '', quantity: 1, price: 0 }],
+          items: [{ product: '', quantity: 1, unit: 'pieces', price: 0, supplier: '' }],
           discount: 0,
           tax: 0,
           notes: ''
         });
         
-        alert('Sale added successfully!');
+        // Navigate back to sales list
+        setCurrentView('sales-list');
       } catch (error) {
         console.error('Error creating sale:', error);
         alert('Error creating sale: ' + error.message);
@@ -238,7 +335,7 @@ const SalesManage = () => {
 
     return (
       <div className="add-sales-form">
-        <h3>Add New Sale</h3>
+        <h3>{editingSaleId ? 'Edit Sale' : 'Add New Sale'}</h3>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
@@ -252,7 +349,7 @@ const SalesManage = () => {
                 required
               />
               <datalist id="customers-list">
-                {customers.map(customer => (
+                {Array.isArray(customers) && customers.map(customer => (
                   <option key={customer.id} value={customer.name} />
                 ))}
               </datalist>
@@ -300,7 +397,7 @@ const SalesManage = () => {
                     }}
                   >
                     <option value="">Select Product</option>
-                    {products.map(product => (
+                    {Array.isArray(products) && products.map(product => (
                       <option key={product.id} value={product.name}>
                         {product.name} - ${product.price}
                       </option>
@@ -317,7 +414,23 @@ const SalesManage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Price</label>
+                  <label>Unit</label>
+                  <select
+                    value={item.unit}
+                    onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                  >
+                    <option value="pieces">Pieces</option>
+                    <option value="kg">Kg</option>
+                    <option value="kl">KL</option>
+                    <option value="box">Box</option>
+                    <option value="liter">Liter</option>
+                    <option value="gram">Gram</option>
+                    <option value="dozen">Dozen</option>
+                    <option value="pack">Pack</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Unit Price</label>
                   <input
                     type="number"
                     value={item.price}
@@ -327,7 +440,16 @@ const SalesManage = () => {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Total</label>
+                  <label>Supplier</label>
+                  <input
+                    type="text"
+                    value={item.supplier}
+                    onChange={(e) => updateItem(index, 'supplier', e.target.value)}
+                    placeholder="Supplier name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Total Price</label>
                   <input
                     type="text"
                     value={`$${(item.quantity * item.price).toFixed(2)}`}
@@ -397,20 +519,22 @@ const SalesManage = () => {
 
           <div className="form-actions">
             <button type="submit" className="submit-btn" disabled={loading}>
-              {loading ? 'Processing...' : '💾 Save Sale'}
+              {loading ? 'Processing...' : (editingSaleId ? '💾 Update Sale' : '💾 Save Sale')}
             </button>
             <button type="button" className="cancel-btn" onClick={() => {
               setFormData({
                 customerName: '',
                 customerPhone: '',
                 customerEmail: '',
-                items: [{ product: '', quantity: 1, price: 0 }],
+                items: [{ product: '', quantity: 1, unit: 'pieces', price: 0, supplier: '' }],
                 discount: 0,
                 tax: 0,
                 notes: ''
               });
+              setEditingSaleId(null);
+              setCurrentView('sales-list');
             }}>
-              🔄 Reset
+              {editingSaleId ? '❌ Cancel Edit' : '🔄 Reset'}
             </button>
           </div>
         </form>
